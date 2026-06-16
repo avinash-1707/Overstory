@@ -9,7 +9,7 @@ export type ModelTier = 'reasoning' | 'fast'
 export type ReasoningEffort = 'low' | 'medium' | 'high' | 'xhigh'
 
 const DEFAULT_MODELS: Record<ModelTier, string> = {
-  reasoning: 'google/gemini-3.5-flash',
+  reasoning: 'anthropic/claude-sonnet-4.6',
   fast: 'anthropic/claude-haiku-4.5',
 }
 
