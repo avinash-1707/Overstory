@@ -8,6 +8,8 @@
     "./schema": "./src/schema/index.ts"
   },
   "scripts": {
+    "db:generate": "drizzle-kit generate",
+    "db:migrate": "NODE_OPTIONS=--network-family-autoselection-attempt-timeout=2000 drizzle-kit migrate",
     "db:push": "NODE_OPTIONS=--network-family-autoselection-attempt-timeout=2000 drizzle-kit push",
     "db:studio": "NODE_OPTIONS=--network-family-autoselection-attempt-timeout=2000 drizzle-kit studio",
     "typecheck": "tsc --noEmit"

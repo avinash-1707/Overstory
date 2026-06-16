@@ -9,10 +9,13 @@ for (const path of ['.env', '../../.env']) {
   }
 }
 
+// Neon recommends a direct (non-pooled) connection for migrations — the pooler
+// (PgBouncer) can terminate DDL mid-run. Runtime keeps the pooler URL.
+const url = (process.env.DATABASE_URL ?? '').replace('-pooler.', '.')
+
 export default defineConfig({
   schema: './src/schema/index.ts',
+  out: './drizzle',
   dialect: 'postgresql',
-  dbCredentials: {
-    url: process.env.DATABASE_URL ?? '',
-  },
+  dbCredentials: { url },
 })
