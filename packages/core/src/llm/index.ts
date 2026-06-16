@@ -9,7 +9,7 @@ export type ModelTier = 'reasoning' | 'fast'
 export type ReasoningEffort = 'low' | 'medium' | 'high' | 'xhigh'
 
 const DEFAULT_MODELS: Record<ModelTier, string> = {
-  reasoning: '~anthropic/claude-opus-latest',
+  reasoning: 'google/gemini-3.5-flash',
   fast: 'anthropic/claude-haiku-4.5',
 }
 
@@ -91,7 +91,11 @@ export class Llm {
   constructor(config: LlmConfig) {
     this.apiKey = config.apiKey
     this.baseUrl = config.baseUrl ?? DEFAULT_BASE_URL
-    this.models = { ...DEFAULT_MODELS, ...config.models }
+    // Empty overrides (e.g. an unset OVERSTORY_MODEL_* env var) fall back to defaults.
+    this.models = {
+      reasoning: config.models?.reasoning || DEFAULT_MODELS.reasoning,
+      fast: config.models?.fast || DEFAULT_MODELS.fast,
+    }
     this.timeoutMs = config.timeoutMs ?? 180_000
     this.maxRetries = config.maxRetries ?? 3
     this.referer = config.referer

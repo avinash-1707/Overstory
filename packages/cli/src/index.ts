@@ -11,6 +11,15 @@ import { analyzeFlow } from '@overstory/core/analysis'
 import { provoke, rankCandidates, selectVitalFew } from '@overstory/core/capture'
 import { readFlowFiles } from './files'
 
+// Load env from cwd or the repo root before reading any keys.
+for (const envPath of ['.env', '../../.env']) {
+  try {
+    process.loadEnvFile(envPath)
+  } catch {
+    // no .env at this path — rely on the ambient environment
+  }
+}
+
 interface CapturedDecision {
   statement: string
   pointers: string[]
