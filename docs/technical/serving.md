@@ -152,13 +152,16 @@ The agent gets **why** (rationale) + **where** (pointer) in a small payload, the
 From the index in `data-model.md`:
 
 ```sql
--- exact file
+-- exact file ($repo bound by the API key — the tenant filter is mandatory:
+-- pointers has no repo_id, so scoping happens via the decisions join)
 SELECT d.* FROM decisions d
 JOIN pointers p ON p.decision_id = d.id
-WHERE p.file_path = $1 AND d.status IN ('decided','needs_reconfirmation');
+WHERE p.file_path = $1
+  AND d.repo_id = $repo
+  AND d.status IN ('decided','needs_reconfirmation');
 
 -- directory scope (a decision governing a whole module)
-... WHERE p.file_path LIKE $1 || '/%' ...
+... WHERE p.file_path LIKE $1 || '/%' AND d.repo_id = $repo ...
 ```
 
 - **Exact + directory-prefix** matching; a decision pointed at a directory governs files beneath it.

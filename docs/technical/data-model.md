@@ -142,7 +142,7 @@ interface Decision {
   supersedesId: DecisionId | null    // points back at the decision this replaces (D11)
   supersededById: DecisionId | null  // set when a newer decision replaces this one
 
-  createdBy: string                  // Better Auth user id
+  createdBy: string | null           // Better Auth user id; null if that user was later deleted (decisions outlive authors, D11)
   createdAt: Date
   updatedAt: Date
   lastConfirmedAt: Date              // bumped on reconfirmation (freshness signal)
@@ -299,8 +299,8 @@ Both serving directions derive from the `pointers` table — no separate store, 
 
 ```sql
 -- file → decisions  (guard query, contradiction check)
-SELECT decision_id FROM pointers WHERE file_path = $1;          -- exact file
-SELECT decision_id FROM pointers WHERE file_path LIKE $1 || '%'; -- directory scope
+SELECT decision_id FROM pointers WHERE file_path = $1;            -- exact file
+SELECT decision_id FROM pointers WHERE file_path LIKE $1 || '/%'; -- directory scope (anchored: '/%' not '%')
 
 -- decision → files  (navigation, D15)
 SELECT file_path, symbol FROM pointers WHERE decision_id = $1;
@@ -314,7 +314,9 @@ SELECT * FROM serve_events WHERE repo_id = $1 ORDER BY created_at DESC LIMIT $2;
 SELECT * FROM serve_events WHERE session_id = $1 ORDER BY created_at ASC;
 ```
 
-Indexes: `pointers(file_path)`, `pointers(decision_id)`, `decisions(repo_id, always_on, status)`, `serve_events(repo_id, created_at)`, `serve_events(session_id)`.
+Indexes: `pointers(file_path text_pattern_ops)` (serves exact match **and** the `LIKE $1 || '/%'` directory scope under any collation), `pointers(decision_id)`, unique `pointers(decision_id, file_path, symbol, anchor_hint)` (one locus per decision, nulls-not-distinct), `decisions(repo_id, always_on, status)`, unique `repos(workspace_id, name)`, `serve_events(repo_id, created_at)`, `serve_events(session_id)`.
+
+**Tenant scoping (mandatory):** `pointers` carries no `repo_id`, so the `file → decisions` guard query must join `decisions` and filter `decisions.repo_id = $repo` (bound by the API key). Without it a shared path like `src/index.ts` would match pointers across tenants. Enforce in one shared query function so no caller can forget it.
 
 - **On-demand tier** = the `file → decisions` query, fed the files the agent is touching (guard query).
 - **Always-on tier** = `always_on = true` decisions for the repo, injected at session start.
@@ -367,6 +369,7 @@ Pointer drift is a **cheap, diff-detectable** invalidation (D15). Decision erosi
 - **Hierarchy:** `Workspace → Repo → Flow → {Decision, AnalysisArtifact}`; `Decision → {Pointer, Provocation, ContradictionEvent}`.
 - **Isolation:** every row carries `workspaceId` (directly or via FK chain); all queries are workspace-scoped.
 - **Auth:** Better Auth (organizations = workspaces, users = members). `ApiKey` rows authenticate the MCP server and the CLI, scoped to a workspace + repo.
+- **Build note (D30):** there is **no separate `workspace` table** — the Better Auth `organization` table _is_ the workspace; `Repo.workspaceId` / `ServeEvent.workspaceId` FK to `organization.id`, `Decision.createdBy` to `user.id`. The auth tables (`user`, `session`, `account`, `verification`, `organization`, `member`, `invitation`) are **generated** by the Better Auth CLI into `schema/auth.ts` (never hand-edited). `ApiKey` is a **domain** table (Better Auth 1.6 has no apiKey plugin) — stores only `hashedKey` + `prefix`, never the plaintext key.
 - **Repo access:** `RepoAccess` stores the GitHub App installation per repo (D27); short-lived tokens minted from a KMS-held app key, never stored in Postgres.
 - **Engine vs served separation:** `AnalysisArtifact` lives in the same Postgres but is never exposed through the serving API — only the capture loop reads/writes it.
 - **Observability:** `ServeEvent` rows are workspace+repo-scoped like everything else; the dashboard (`dashboard.md`) reads them through the shared Drizzle layer, the Hono serving handlers write them (D28).
