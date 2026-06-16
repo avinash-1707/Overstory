@@ -8,9 +8,9 @@
 
 ## Scope of this doc
 
-**Covers:** the entities (Decision, Flow, Pointer, AnalysisArtifact, Provocation, ContradictionEvent), their relationships, the path↔decision index, the decision lifecycle, freshness/invalidation rules, and tenancy.
+**Covers:** the entities (Decision, Flow, Pointer, AnalysisArtifact, Provocation, ContradictionEvent, ServeEvent), their relationships, the path↔decision index, the decision lifecycle, freshness/invalidation rules, and tenancy.
 
-**Defers:** _how_ provocations are generated and ranked, and the accept/reject UX → `capture-loop.md`. The MCP tool surface and serving tiers → `serving.md`. (This doc defines the data those two read and write.)
+**Defers:** _how_ provocations are generated and ranked, and the accept/reject UX → `capture-loop.md`. The MCP tool surface and serving tiers → `serving.md`. The dashboard that reads `ServeEvent` → `dashboard.md`. (This doc defines the data those three read and write.)
 
 ---
 
@@ -29,6 +29,7 @@
 | Multi-tenant cloud store | D23, D26 | `Workspace → Repo → Flow → Decision`; row-scoped by `workspaceId`. |
 | Provenance for seeded rationale | D18 | `Decision.provenance` records the retrievable sources a draft was seeded from. |
 | Repo read access for cloud capture | D27 | `RepoAccess` (read-only GitHub App); app key in KMS, short-lived tokens minted on demand. |
+| Observe what the agent actually pulled | D28 | `ServeEvent` logs every MCP tool call (IDs + query metadata, never code); powers the dashboard. |
 
 ---
 
@@ -44,6 +45,7 @@ Workspace (Better Auth org)
         │            ├── Pointer[]            (file-level loci, D15/D22)
         │            ├── Provocation[]        (capture history)
         │            └── ContradictionEvent[] (freshness, D11)
+        ├── ServeEvent[] (MCP call log — dashboard, D28)
         └── ApiKey[] (MCP + CLI auth, workspace/repo-scoped)
 ```
 
@@ -258,6 +260,37 @@ interface ContradictionEvent {
 }
 ```
 
+### ServeEvent (MCP call log — D28, powers the dashboard)
+
+Every MCP tool call writes one row. This is what the **Activity dashboard** and **Sessions viewer** read (`dashboard.md`). The Hono serving handler does the lookup **and** the insert in one place (`serving.md`).
+
+```ts
+type ServeEventId = string & { readonly _t: 'ServeEventId' }
+type McpTool      = 'context' | 'guard' | 'check' | 'decision' | 'search'
+
+interface ServeEvent {
+  id: ServeEventId
+  workspaceId: WorkspaceId
+  repoId: RepoId
+  sessionId: string                  // one MCP connection = one agent session; the timeline unit
+  tool: McpTool
+  query: ServeQuery                  // what the agent asked
+  servedDecisionIds: DecisionId[]    // what came back
+  conflictDecisionIds: DecisionId[]  // non-empty when `check` flagged a conflict (else [])
+  latencyMs: number
+  createdAt: Date
+}
+
+interface ServeQuery {               // only the field(s) for the tool are set
+  files?: string[]                   // guard / check — the paths the agent named
+  summary?: string                   // check — what it says it did
+  decisionId?: DecisionId            // decision — single read
+  query?: string                     // search — fuzzy task text
+}
+```
+
+**D1-safe:** stores decision **IDs** + query **metadata** (file paths the agent named), never code. The Sessions viewer reconstructs each payload **live** from the current `Decision` (IDs → render) — no payload duplication. Live reconstruction shows the decision *as it is now*, not point-in-time; acceptable because rationale is stable (D6). Snapshotting is deferred (`dashboard.md` Open questions).
+
 ---
 
 ## The path↔decision index (D17 / D20)
@@ -275,9 +308,13 @@ SELECT file_path, symbol FROM pointers WHERE decision_id = $1;
 -- always-on tier  (D20)
 SELECT * FROM decisions
 WHERE repo_id = $1 AND always_on = true AND status = 'decided';
+
+-- dashboard activity  (D28 — recent MCP calls, and one session's timeline)
+SELECT * FROM serve_events WHERE repo_id = $1 ORDER BY created_at DESC LIMIT $2;
+SELECT * FROM serve_events WHERE session_id = $1 ORDER BY created_at ASC;
 ```
 
-Indexes: `pointers(file_path)`, `pointers(decision_id)`, `decisions(repo_id, always_on, status)`.
+Indexes: `pointers(file_path)`, `pointers(decision_id)`, `decisions(repo_id, always_on, status)`, `serve_events(repo_id, created_at)`, `serve_events(session_id)`.
 
 - **On-demand tier** = the `file → decisions` query, fed the files the agent is touching (guard query).
 - **Always-on tier** = `always_on = true` decisions for the repo, injected at session start.
@@ -332,6 +369,7 @@ Pointer drift is a **cheap, diff-detectable** invalidation (D15). Decision erosi
 - **Auth:** Better Auth (organizations = workspaces, users = members). `ApiKey` rows authenticate the MCP server and the CLI, scoped to a workspace + repo.
 - **Repo access:** `RepoAccess` stores the GitHub App installation per repo (D27); short-lived tokens minted from a KMS-held app key, never stored in Postgres.
 - **Engine vs served separation:** `AnalysisArtifact` lives in the same Postgres but is never exposed through the serving API — only the capture loop reads/writes it.
+- **Observability:** `ServeEvent` rows are workspace+repo-scoped like everything else; the dashboard (`dashboard.md`) reads them through the shared Drizzle layer, the Hono serving handlers write them (D28).
 
 ---
 
@@ -342,6 +380,7 @@ Pointer drift is a **cheap, diff-detectable** invalidation (D15). Decision erosi
 - `Pointer` holds _addresses_ (path/symbol/anchor), not the bytes at them.
 - Code snippets **transit** the backend for the managed LLM call (D25) and for cloud capture (D27) but are **not persisted** — consistent with D1.
 - **No long-lived repo credentials.** Only the GitHub App `installationId` is stored (D27); short-lived tokens are minted on demand from a KMS-held app key, never persisted.
+- **No code in `ServeEvent` (D28).** The MCP call log holds decision IDs + query metadata (file paths the agent named); the dashboard reconstructs payloads live from `Decision`. No served code bytes — there are none to log (payloads are why+where, D1/D15).
 
 ---
 

@@ -55,6 +55,15 @@ Exposing Overstory's persisted decisions + rationale as an MCP server, so any co
 **Refined context**
 The small, decided set of intentional choices Overstory serves — as opposed to the full, noisy codebase an agent could read live. The value is the refinement — a product of the capture loop — not the storage or the serving (D18 treats those as plumbing).
 
+**ServeEvent** _(the MCP call log)_
+One row written per MCP tool call — tool, query, served decision IDs, any conflict IDs, session id, timestamp (D28). Stores IDs + query metadata, **never code** (consistent with D1 — served payloads are why+where, D15). The data behind the dashboard; see `data-model.md` for the shape.
+
+**Activity dashboard** _(the dogfood instrument)_
+The web view that visualizes what the coding agent pulled over MCP, built on `ServeEvent` (D28). Two co-equal halves: **Activity** (derived metrics) and **Sessions** (per-session timeline of exactly what one agent run received). Not UI candy — it's the only honest way to _measure_ Risk 4 (does the agent consult before editing?) and the serve signal (Risk 3A). Lives in the same web app as the capture client (D29). See `dashboard.md`.
+
+**Consult-rate** _(the Risk-4 headline metric)_
+Of agent runs that touched decision-bearing files, the share that issued a covering `guard` query _before_ the change landed (D28). The honest measure of whether prevention (D17) actually fires or whether Overstory is really a review-time linter (catch-only). Computed as a join of `ServeEvent(guard)` against touched files (PR diffs); low consult-rate forces the positioning to follow the data (Risk 4).
+
 **Pointer** _(code reference, not code storage)_
 A reference a decision carries to _where it applies_ in the codebase — file paths, symbol names, or durable anchors. The agent uses the pointer to jump straight to the relevant code and read it _live_, eliminating the expensive repo-wide search it would otherwise do to locate the decision's subject. Overstory stores the **address**, never the **contents** (this is consistent with D1, not a reversal). The division of labor: Overstory serves the _why_ (rationale) + _where_ (pointer); the agent fetches the _what_ (live code). The pointer is **bidirectional** (D17): _decision → file_ powers navigation (D15); the reverse index _file → decisions_ powers interception (the guard query and the contradiction check). One path↔decision index, served both ways.
 

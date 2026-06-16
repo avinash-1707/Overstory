@@ -46,6 +46,8 @@ Most objections to Overstory were closed during idea-shaping (see Decisions Log)
 
 **Still unproven.** Whether agents reliably _call_ the guard query (Layer 1) or routinely skip it and fall through to catch (Layer 2). If Layer 1 fires rarely, Overstory is effectively a review-time linter, not a generation-time guardrail — fine, but the positioning must match. Watch during dogfooding: how often does the agent consult Overstory _unprompted_ before editing?
 
+**How we'll actually know (D28).** This is measured, not guessed: every MCP call logs a `ServeEvent`, and the **Activity dashboard** (`../technical/dashboard.md`) surfaces the **consult-rate** — of runs touching decision-bearing files, the share that issued a covering guard call before the change landed. The dashboard is the instrument for this risk; a low consult-rate is the signal to lean on always-on + the PR check and re-position.
+
 ---
 
 ## Watch-items (not fatal, but track)
@@ -86,7 +88,7 @@ Beyond the two experiments: **do you keep opening Overstory after week one?** Su
 
 **But split the signal (Risk 3).** "Do I keep using it" mostly measures **serve value + maintenance willingness** — not **capture value**, because the founder has nothing to reconstruct. Score them as two separate questions so a strong serve signal can't disguise an untested capture loop:
 
-- **(A) Serve:** does the agent stop re-making banned choices once decisions are stored? (testable now)
+- **(A) Serve:** does the agent stop re-making banned choices once decisions are stored? (testable now — read it straight off the **Activity dashboard**: consult-rate, decisions-served, catches, D28)
 - **(B) Capture:** does the provocation loop extract clean rationale from someone who _doesn't already know it_? (testable only via a cold flow now, fully only via a second subject later)
 
 ---

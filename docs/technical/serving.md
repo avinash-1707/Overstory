@@ -1,6 +1,6 @@
 # Overstory — Serving
 
-> **Status:** Build-phase technical doc. Defines how stored decisions reach a coding agent — the MCP tool surface, two-tier serving (D20), the prevent/catch model (D17), and the PR contradiction check (D11/D27). Reads the entities in `data-model.md`; the write side is `capture-loop.md`.
+> **Status:** Build-phase technical doc. Defines how stored decisions reach a coding agent — the MCP tool surface, two-tier serving (D20), the prevent/catch model (D17), and the PR contradiction check (D11/D27). Reads the entities in `data-model.md`; the write side is `capture-loop.md`. Every tool call also logs a `ServeEvent` (D28) that the dashboard reads — see `dashboard.md`.
 >
 > **Stack:** TypeScript (D21). MCP server via `@modelcontextprotocol/sdk` (stdio for dogfood → HTTP later). Backend Postgres + Drizzle (D26).
 
@@ -224,11 +224,24 @@ session start ─▶ overstory_context        (always-on tier, steers planning)
   open PR ─▶ GitHub App contradiction check        (backstop CATCH, D11/D27)
 ```
 
+Every step that calls a tool emits a `ServeEvent` (D28) → the dashboard renders the whole timeline (`dashboard.md`).
+
+---
+
+## Serve observability (D28)
+
+Every tool call writes one `ServeEvent` (`data-model.md`) — `tool`, `query`, `servedDecisionIds`, `conflictDecisionIds`, `sessionId`. The serving handler does the **lookup and the insert in one place**, so logging is structurally impossible to forget. This is what makes the agent's MCP consumption *visible*:
+
+- **Activity dashboard** — consult-rate (the Risk-4 headline), coverage gaps, most-served decisions, catches.
+- **Sessions viewer** — the exact timeline of what one agent run pulled, payloads reconstructed live.
+
+Full view definitions + metric derivations → `dashboard.md`. D1-safe: the log holds decision IDs + query metadata, never code.
+
 ---
 
 ## Cost & performance
 
-- Serving is **cheap reads** — no LLM on `context` / `guard` / `decision` / `search` (pure index queries).
+- Serving is **cheap reads** — no LLM on `context` / `guard` / `decision` / `search` (pure index queries). The `ServeEvent` insert (D28) is a cheap write, off the hot path.
 - LLM cost only on contradiction judgment (`check` + PR check), and that's cheap-triage-first (capture-loop.md).
 - Cache the always-on tier per repo; invalidate when an `alwaysOn` decision changes.
 
