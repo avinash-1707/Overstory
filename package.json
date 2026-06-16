@@ -13,8 +13,7 @@
     "lint": "turbo lint",
     "typecheck": "turbo typecheck",
     "format": "prettier --write .",
-    "db:generate": "turbo db:generate",
-    "db:migrate": "turbo db:migrate"
+    "db:push": "turbo db:push"
   },
   "pnpm": {
     "onlyBuiltDependencies": [
