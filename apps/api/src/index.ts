@@ -4,6 +4,7 @@ import { Hono } from 'hono'
 import { auth } from './lib/auth'
 import { apiKeyAuth, type AuthVars } from './middleware/auth'
 import { capture } from './routes/capture'
+import { mcp } from './routes/mcp'
 
 // @overstory/api — Hono backend for MACHINE clients (D29):
 //   - capture persist (CLI → /v1/capture)
@@ -21,6 +22,7 @@ app.on(['POST', 'GET'], '/api/auth/*', (c) => auth.handler(c.req.raw))
 // Machine clients (CLI, MCP) — every /v1/* route requires a bearer ApiKey.
 app.use('/v1/*', apiKeyAuth)
 app.route('/v1', capture)
+app.route('/v1', mcp)
 
 const port = Number(process.env.PORT ?? 3001)
 serve({ fetch: app.fetch, port }, ({ port }) => {

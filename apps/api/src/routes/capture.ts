@@ -3,6 +3,7 @@ import { and, eq, sql } from 'drizzle-orm'
 import { z } from 'zod'
 import { decisions, flows, pointers } from '@overstory/db/schema'
 import type { FlowId } from '@overstory/db/schema'
+import { normalizePath } from '@overstory/core/paths'
 import { db } from '../lib/db'
 import type { AuthVars } from '../middleware/auth'
 
@@ -38,16 +39,6 @@ const bodySchema = z.object({
   resolvedSha: z.string().min(1),
   decisions: z.array(decisionSchema).min(1),
 })
-
-// Canonical repo-relative path: posix separators, no `./` prefix, no trailing slash.
-// Guard's exact + directory-prefix match (serving) depends on one canonical form.
-function normalizePath(p: string): string {
-  return p
-    .replace(/\\/g, '/')
-    .trim()
-    .replace(/^\.\//, '')
-    .replace(/\/+$/, '')
-}
 
 export const capture = new Hono<{ Variables: AuthVars }>()
 

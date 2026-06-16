@@ -114,6 +114,9 @@ importers:
       '@overstory/db':
         specifier: workspace:*
         version: link:../db
+      drizzle-orm:
+        specifier: ^0.45.2
+        version: 0.45.2(kysely@0.29.2)(postgres@3.4.9)
       ts-morph:
         specifier: ^28.0.0
         version: 28.0.0
