@@ -47,7 +47,6 @@ current design as if it were the alternative.`
 
   return llm.extract(prompt, provocationSchema, 'provocation', {
     tier: 'reasoning',
-    effort: 'high',
     system: SYSTEM,
   })
 }

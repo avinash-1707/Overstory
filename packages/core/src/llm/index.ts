@@ -14,7 +14,7 @@ const DEFAULT_MODELS: Record<ModelTier, string> = {
 }
 
 const DEFAULT_MAX_TOKENS: Record<ModelTier, number> = {
-  reasoning: 32_000,
+  reasoning: 12_000,
   fast: 8_000,
 }
 
@@ -129,7 +129,7 @@ export class Llm {
       },
       usage: { include: true },
     }
-    if (useReasoning) body.reasoning = { effort: opts.effort ?? 'high' }
+    if (useReasoning) body.reasoning = { effort: opts.effort ?? 'medium' }
 
     const content = await this.complete(body)
     let parsed: unknown

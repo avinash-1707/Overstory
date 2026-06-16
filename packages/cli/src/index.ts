@@ -47,9 +47,38 @@ function makeLlm(): Llm {
   })
 }
 
+const totals = { prompt: 0, completion: 0, cost: 0 }
+
+function fmtSecs(start: number): string {
+  return `${Math.round((Date.now() - start) / 1000)}s`
+}
+
+// Spinner with a live elapsed-time readout (the LLM call is non-streaming, so
+// this is the only mid-call signal — token counts arrive on completion).
+async function spin<T>(label: string, fn: () => Promise<T>, done?: (r: T) => string): Promise<T> {
+  const s = p.spinner()
+  const start = Date.now()
+  s.start(label)
+  const tick = setInterval(() => s.message(`${label} (${fmtSecs(start)})`), 1000)
+  try {
+    const result = await fn()
+    clearInterval(tick)
+    s.stop(`${done ? done(result) : label} (${fmtSecs(start)})`)
+    return result
+  } catch (err) {
+    clearInterval(tick)
+    s.stop(`${label} — failed (${fmtSecs(start)})`)
+    throw err
+  }
+}
+
 function logUsage(model: string, u: TokenUsage): void {
+  totals.prompt += u.promptTokens
+  totals.completion += u.completionTokens
+  totals.cost += u.costUsd ?? 0
   const cost = u.costUsd != null ? ` ($${u.costUsd.toFixed(4)})` : ''
-  p.log.message(`${model} — ${u.promptTokens}+${u.completionTokens} tok${cost}`)
+  const running = `${totals.prompt + totals.completion} tok ($${totals.cost.toFixed(4)})`
+  p.log.message(`${model} — ${u.promptTokens}+${u.completionTokens} tok${cost} · total ${running}`)
 }
 
 function bail(value: unknown): asserts value is string {
@@ -76,16 +105,18 @@ program
       process.exit(1)
     }
 
-    const s = p.spinner()
-    s.start(`Analyzing ${files.length} file(s)`)
-    const analysis = await analyzeFlow(llm, { name: opts.name ?? path, files })
-    s.stop(`${analysis.candidateDecisions.length} candidate decision(s)`)
+    const started = Date.now()
+    const analysis = await spin(
+      `Analyzing ${files.length} file(s)`,
+      () => analyzeFlow(llm, { name: opts.name ?? path, files }),
+      (a) => `${a.candidateDecisions.length} candidate decision(s)`,
+    )
 
     p.note(analysis.summary, 'Summary')
     for (const { candidate, composite } of rankCandidates(analysis.candidateDecisions)) {
       p.log.step(`[${composite.toFixed(2)}] ${candidate.statement}`)
     }
-    p.outro('Done')
+    p.outro(`Done in ${fmtSecs(started)} · ${totals.prompt + totals.completion} tok ($${totals.cost.toFixed(4)})`)
   })
 
 program
@@ -103,10 +134,12 @@ program
       process.exit(1)
     }
 
-    const s = p.spinner()
-    s.start(`Analyzing ${files.length} file(s)`)
-    const analysis = await analyzeFlow(llm, { name: opts.name ?? path, files })
-    s.stop(`${analysis.candidateDecisions.length} candidate decision(s)`)
+    const started = Date.now()
+    const analysis = await spin(
+      `Analyzing ${files.length} file(s)`,
+      () => analyzeFlow(llm, { name: opts.name ?? path, files }),
+      (a) => `${a.candidateDecisions.length} candidate decision(s)`,
+    )
 
     const budget = Number(opts.budget)
     if (!Number.isInteger(budget) || budget < 1) {
@@ -118,10 +151,7 @@ program
     const captured: CapturedDecision[] = []
 
     for (const { candidate, composite } of vital) {
-      const ps = p.spinner()
-      ps.start('Generating provocation')
-      const prov = await provoke(llm, candidate, analysis)
-      ps.stop()
+      const prov = await spin('Generating provocation', () => provoke(llm, candidate, analysis))
 
       if (!prov.plausible) {
         p.log.warn(`Skipped (failed plausibility self-check): ${candidate.statement}`)
@@ -160,7 +190,7 @@ program
       })
     }
 
-    p.outro(`Captured ${captured.length} decision(s)`)
+    p.outro(`Captured ${captured.length} decision(s) · ${fmtSecs(started)} · ${totals.prompt + totals.completion} tok ($${totals.cost.toFixed(4)})`)
     if (captured.length > 0) process.stdout.write(`${JSON.stringify(captured, null, 2)}\n`)
   })
 

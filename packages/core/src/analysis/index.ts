@@ -32,7 +32,6 @@ are not present.`
 export async function analyzeFlow(llm: Llm, flow: FlowInput): Promise<AnalysisContent> {
   return llm.extract(buildPrompt(flow), analysisContentSchema, 'analysis', {
     tier: 'reasoning',
-    effort: 'high',
     system: SYSTEM,
   })
 }
