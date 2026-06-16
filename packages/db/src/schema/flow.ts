@@ -1,4 +1,4 @@
-import { index, pgTable, text } from 'drizzle-orm/pg-core'
+import { index, pgTable, text, unique } from 'drizzle-orm/pg-core'
 import { repos } from './repo'
 import { createdAt, ulidPk } from './_columns'
 import type { AnalysisArtifactId, FlowId, RepoId } from './_ids'
@@ -18,5 +18,9 @@ export const flows = pgTable(
     currentAnalysisId: text('current_analysis_id').$type<AnalysisArtifactId>(),
     createdAt: createdAt(),
   },
-  (t) => [index('flows_repo_idx').on(t.repoId)],
+  (t) => [
+    index('flows_repo_idx').on(t.repoId),
+    // One flow name per repo — makes capture idempotent (upsert by name, no dup flows).
+    unique('flows_repo_name_uq').on(t.repoId, t.name),
+  ],
 )

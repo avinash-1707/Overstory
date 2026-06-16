@@ -1,7 +1,8 @@
 import { betterAuth } from 'better-auth'
 import { drizzleAdapter } from 'better-auth/adapters/drizzle'
 import { organization } from 'better-auth/plugins'
-import { createDb, schema } from '@overstory/db'
+import { schema } from '@overstory/db'
+import { db } from './db'
 
 // Better Auth — the source of truth for the AUTH schema (D26).
 // organization plugin -> organization = Workspace, member = users, invitation (D23).
@@ -13,8 +14,6 @@ import { createDb, schema } from '@overstory/db'
 //     pnpm dlx @better-auth/cli@latest generate \
 //       --config apps/api/src/lib/auth.ts \
 //       --output packages/db/src/schema/auth.ts -y
-
-const db = createDb()
 
 export const auth = betterAuth({
   database: drizzleAdapter(db, { provider: 'pg', schema }),

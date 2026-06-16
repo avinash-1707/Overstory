@@ -4,12 +4,18 @@
 //
 //   overstory capture <path>   — analyze -> rank -> provoke, then defend (accept/reject)
 //   overstory analyze <path>   — deep-analyze a flow, print ranked candidate decisions
+import { execFile } from 'node:child_process'
+import { stat } from 'node:fs/promises'
+import { dirname, resolve } from 'node:path'
+import { promisify } from 'node:util'
 import { Command } from 'commander'
 import * as p from '@clack/prompts'
 import { Llm, type TokenUsage } from '@overstory/core/llm'
 import { analyzeFlow } from '@overstory/core/analysis'
 import { provoke, rankCandidates, selectVitalFew } from '@overstory/core/capture'
 import { readFlowFiles } from './files'
+
+const execFileAsync = promisify(execFile)
 
 // Load env from cwd or the repo root before reading any keys.
 for (const envPath of ['.env', '../../.env']) {
@@ -20,13 +26,56 @@ for (const envPath of ['.env', '../../.env']) {
   }
 }
 
+interface Ranking {
+  nonObviousness: number
+  blastRadius: number
+  bannedDefaultProximity: number
+  composite: number
+}
+
 interface CapturedDecision {
+  title: string
   statement: string
   pointers: string[]
-  composite: number
+  ranking: Ranking
   outcome: 'reject_with_reason' | 'accept'
   rationale: string
   alternative: string
+}
+
+interface PersistResult {
+  flowId: string
+  persisted: number
+  skipped: number
+}
+
+// Short display title derived from the (possibly long) decision statement.
+function titleFrom(statement: string): string {
+  const firstLine = statement.split('\n')[0]?.trim() || statement
+  return firstLine.length > 80 ? `${firstLine.slice(0, 79)}…` : firstLine
+}
+
+// The commit the analysis ran against — recorded on every pointer (lastResolvedSha).
+async function gitHeadSha(cwd: string): Promise<string | null> {
+  try {
+    const { stdout } = await execFileAsync('git', ['rev-parse', 'HEAD'], { cwd })
+    return stdout.trim() || null
+  } catch {
+    return null
+  }
+}
+
+async function persist(apiUrl: string, apiKey: string, body: unknown): Promise<PersistResult> {
+  const res = await fetch(`${apiUrl.replace(/\/$/, '')}/v1/capture`, {
+    method: 'POST',
+    headers: { 'content-type': 'application/json', authorization: `Bearer ${apiKey}` },
+    body: JSON.stringify(body),
+  })
+  if (!res.ok) {
+    const detail = await res.text().catch(() => res.statusText)
+    throw new Error(`persist failed (${res.status}): ${detail}`)
+  }
+  return (await res.json()) as PersistResult
 }
 
 function makeLlm(): Llm {
@@ -181,17 +230,56 @@ program
       bail(rationale)
 
       captured.push({
+        title: titleFrom(candidate.statement),
         statement: candidate.statement,
         pointers: candidate.pointers,
-        composite,
+        ranking: { ...candidate.estimatedRanking, composite },
         outcome: outcome === 'reject' ? 'reject_with_reason' : 'accept',
         rationale,
         alternative: prov.alternative,
       })
     }
 
-    p.outro(`Captured ${captured.length} decision(s) · ${fmtSecs(started)} · ${totals.prompt + totals.completion} tok ($${totals.cost.toFixed(4)})`)
-    if (captured.length > 0) process.stdout.write(`${JSON.stringify(captured, null, 2)}\n`)
+    const tok = `${totals.prompt + totals.completion} tok ($${totals.cost.toFixed(4)})`
+    if (captured.length === 0) {
+      p.outro(`Captured 0 decisions · ${fmtSecs(started)} · ${tok}`)
+      return
+    }
+
+    const apiUrl = process.env.OVERSTORY_API_URL
+    const apiKey = process.env.OVERSTORY_API_KEY
+
+    if (apiUrl && apiKey) {
+      const abs = resolve(path)
+      const cwd = (await stat(abs)).isFile() ? dirname(abs) : abs
+      const sha = await gitHeadSha(cwd)
+      if (!sha) {
+        p.cancel('Capture must run inside a git checkout — could not resolve HEAD for pointer SHAs.')
+        process.exit(1)
+      }
+      const body = {
+        flow: { name: opts.name ?? path, description: analysis.summary },
+        resolvedSha: sha,
+        decisions: captured.map((d) => ({
+          title: d.title,
+          statement: d.statement,
+          rationale: { why: d.rationale, capturedFrom: d.outcome === 'reject_with_reason' ? 'reject' : 'accept' },
+          ranking: d.ranking,
+          alternativesConsidered: [d.alternative],
+          pointers: d.pointers,
+        })),
+      }
+      const r = await spin(
+        'Persisting to Overstory',
+        () => persist(apiUrl, apiKey, body),
+        (r) => `persisted ${r.persisted}, skipped ${r.skipped} dup(s)`,
+      )
+      p.outro(`Captured ${captured.length} · persisted ${r.persisted} (skipped ${r.skipped}) · ${fmtSecs(started)} · ${tok}`)
+    } else {
+      p.log.warn('OVERSTORY_API_URL / OVERSTORY_API_KEY not set — printing JSON instead of persisting.')
+      process.stdout.write(`${JSON.stringify(captured, null, 2)}\n`)
+      p.outro(`Captured ${captured.length} decision(s) · ${fmtSecs(started)} · ${tok}`)
+    }
   })
 
 program.parseAsync().catch((err: unknown) => {
