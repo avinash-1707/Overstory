@@ -1,0 +1,20 @@
+{
+  "name": "@overstory/api",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "tsx watch src/index.ts",
+    "build": "tsup src/index.ts --format esm --clean",
+    "start": "node dist/index.js",
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "@hono/node-server": "^2.0.5",
+    "@overstory/core": "workspace:*",
+    "@overstory/db": "workspace:*",
+    "better-auth": "^1.6.19",
+    "hono": "^4.12.25",
+    "zod": "^4.4.3"
+  }
+}

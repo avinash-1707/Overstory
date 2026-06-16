@@ -1,0 +1,1 @@
+# routes: mcp.ts (serving), webhooks.ts (GitHub App PR check), auth.ts (Better Auth handler)

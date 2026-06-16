@@ -1,0 +1,22 @@
+{
+  "name": "@overstory/cli",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "bin": {
+    "overstory": "./dist/index.js"
+  },
+  "exports": {
+    ".": "./src/index.ts"
+  },
+  "scripts": {
+    "dev": "tsx src/index.ts",
+    "build": "tsup src/index.ts --format esm --clean",
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "@clack/prompts": "^1.5.1",
+    "@overstory/core": "workspace:*",
+    "commander": "^15.0.0"
+  }
+}

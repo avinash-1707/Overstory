@@ -1,0 +1,22 @@
+{
+  "name": "@overstory/mcp",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "bin": {
+    "overstory-mcp": "./dist/index.js"
+  },
+  "exports": {
+    ".": "./src/index.ts"
+  },
+  "scripts": {
+    "dev": "tsx src/index.ts",
+    "build": "tsup src/index.ts --format esm --clean --dts",
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "@modelcontextprotocol/sdk": "^1.29.0",
+    "@overstory/core": "workspace:*",
+    "zod": "^4.4.3"
+  }
+}
