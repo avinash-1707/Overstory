@@ -62,7 +62,7 @@ interface ChatRequest {
 }
 
 interface ChatResponse {
-  choices?: { message?: { content?: string | null } }[]
+  choices?: { message?: { content?: string | null }; finish_reason?: string }[]
   usage?: { prompt_tokens?: number; completion_tokens?: number; cost?: number }
   error?: { message?: string }
 }
@@ -73,6 +73,7 @@ export class LlmError extends Error {
   constructor(
     message: string,
     readonly status?: number,
+    readonly code?: 'empty',
   ) {
     super(message)
   }
@@ -144,8 +145,9 @@ export class Llm {
     try {
       return await this.send(body)
     } catch (err) {
-      // Some providers reject reasoning + structured output together; retry once plain.
-      if (err instanceof LlmError && err.status === 400 && body.reasoning) {
+      // Reasoning + structured output can 400 or yield an empty completion on
+      // some providers (reasoning eats the token budget); retry once without it.
+      if (err instanceof LlmError && body.reasoning && (err.status === 400 || err.code === 'empty')) {
         const { reasoning: _omit, ...withoutReasoning } = body
         return this.send(withoutReasoning)
       }
@@ -176,10 +178,16 @@ export class Llm {
         }
         const data = (await res.json()) as ChatResponse
         if (data.error) throw new LlmError(data.error.message ?? 'OpenRouter error')
-        const content = data.choices?.[0]?.message?.content
-        if (!content) throw new LlmError('OpenRouter returned an empty completion')
+        const choice = data.choices?.[0]
         this.meter(body.model, data.usage)
-        return content
+        if (!choice?.message?.content) {
+          throw new LlmError(
+            `OpenRouter returned an empty completion (finish_reason: ${choice?.finish_reason ?? 'unknown'})`,
+            undefined,
+            'empty',
+          )
+        }
+        return choice.message.content
       } catch (err) {
         lastErr = err
         if (err instanceof LlmError) throw err
