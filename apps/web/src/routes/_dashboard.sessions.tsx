@@ -1,52 +1,81 @@
+import { useSuspenseQuery } from '@tanstack/react-query'
 import { createFileRoute, Link } from '@tanstack/react-router'
-import { sessionsFn } from '../server/functions'
+import { Badge, EmptyState, PageHeader } from '../components/ui'
+import { sessionsQuery } from '../lib/queries'
 
 export const Route = createFileRoute('/_dashboard/sessions')({
-  loader: () => sessionsFn({ data: { window: 'all' } }),
+  loader: ({ context }) => context.queryClient.ensureQueryData(sessionsQuery('all')),
   component: SessionsPage,
 })
 
+function formatRelative(d: Date): string {
+  const diff = Date.now() - d.getTime()
+  if (diff < 60_000) return 'just now'
+  if (diff < 3_600_000) return `${Math.floor(diff / 60_000)}m ago`
+  if (diff < 86_400_000) return `${Math.floor(diff / 3_600_000)}h ago`
+  return `${Math.floor(diff / 86_400_000)}d ago`
+}
+
+function truncateId(id: string, len = 20): string {
+  return id.length > len ? id.slice(0, len) + '...' : id
+}
+
 function SessionsPage() {
-  const sessions = Route.useLoaderData()
+  const { data: sessions } = useSuspenseQuery(sessionsQuery('all'))
 
   return (
     <div className="mx-auto max-w-4xl px-8 py-8">
-      <h1 className="mb-6 font-display text-3xl tracking-tight">Sessions</h1>
+      <PageHeader title="Sessions" />
 
       {sessions.length === 0 ? (
-        <div className="rounded-lg border border-border bg-surface px-6 py-16 text-center">
-          <p className="text-fg">No sessions yet</p>
-          <p className="mt-1 text-sm text-fg-muted">
-            Sessions appear once an agent consults Overstory.
-          </p>
-        </div>
+        <EmptyState
+          title="No sessions yet"
+          description="Sessions appear once an agent consults Overstory."
+        />
       ) : (
-        <ul className="divide-y divide-border overflow-hidden rounded-lg border border-border bg-surface">
-          {sessions.map((s) => (
-            <li key={s.sessionId}>
+        <div className="overflow-hidden rounded-lg border border-border bg-surface">
+          <div className="divide-y divide-border">
+            {sessions.map((s, i) => (
               <Link
+                key={s.sessionId}
                 to="/sessions/$sessionId"
                 params={{ sessionId: s.sessionId }}
-                className="flex items-center gap-4 px-5 py-3.5 transition-colors hover:bg-raised"
+                className="session-row flex items-center gap-4 px-5 py-3.5 transition-colors hover:bg-raised"
+                style={{ animationDelay: `${i * 40}ms` }}
               >
-                <span className="w-28 shrink-0 text-xs text-fg-subtle">
-                  {new Date(s.lastAt).toLocaleString()}
+                {/* Relative time */}
+                <span className="w-20 shrink-0 text-2xs text-fg-subtle">
+                  {formatRelative(new Date(s.lastAt))}
                 </span>
-                <span className="flex-1 truncate font-mono text-xs text-fg-muted">
-                  {s.sessionId}
+
+                {/* Session ID */}
+                <span className="flex-1 font-mono text-xs text-fg-muted">
+                  {truncateId(s.sessionId)}
                 </span>
-                <span className="font-mono text-xs text-fg-muted">{s.callCount} calls</span>
+
+                {/* Stat group: calls */}
+                <span className="hidden shrink-0 flex-col items-end sm:flex">
+                  <span className="font-mono text-xs text-fg">{s.callCount}</span>
+                  <span className="text-2xs text-fg-subtle">calls</span>
+                </span>
+
+                {/* Stat group: served */}
+                <span className="hidden shrink-0 flex-col items-end md:flex">
+                  <span className="font-mono text-xs text-fg">{s.servedCount}</span>
+                  <span className="text-2xs text-fg-subtle">served</span>
+                </span>
+
+                {/* Guard-fired badge */}
                 {s.guardFired && (
-                  <span className="rounded-sm bg-danger-muted px-1.5 py-0.5 text-2xs text-danger">
-                    guard fired
-                  </span>
+                  <Badge variant="danger">guard fired</Badge>
                 )}
-                <span className="font-mono text-xs text-fg-muted">{s.servedCount} served</span>
-                <span className="text-fg-subtle">›</span>
+
+                {/* Arrow */}
+                <span className="text-sm text-fg-subtle" aria-hidden="true">›</span>
               </Link>
-            </li>
-          ))}
-        </ul>
+            ))}
+          </div>
+        </div>
       )}
     </div>
   )
