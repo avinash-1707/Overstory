@@ -8,6 +8,7 @@
     "build": "tsup src/index.ts --format esm --clean",
     "start": "node dist/index.js",
     "seed": "tsx src/seed.ts",
+    "stats": "tsx src/stats.ts",
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {
