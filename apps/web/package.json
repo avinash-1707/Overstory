@@ -10,6 +10,7 @@
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {
+    "@overstory/config": "workspace:*",
     "@overstory/core": "workspace:*",
     "@overstory/db": "workspace:*",
     "@tanstack/react-query": "^5.101.0",

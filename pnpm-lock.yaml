@@ -41,6 +41,9 @@ importers:
       '@hono/node-server':
         specifier: ^2.0.5
         version: 2.0.5(hono@4.12.25)
+      '@overstory/config':
+        specifier: workspace:*
+        version: link:../../packages/config
       '@overstory/core':
         specifier: workspace:*
         version: link:../../packages/core
@@ -62,6 +65,9 @@ importers:
 
   apps/web:
     dependencies:
+      '@overstory/config':
+        specifier: workspace:*
+        version: link:../../packages/config
       '@overstory/core':
         specifier: workspace:*
         version: link:../../packages/core
@@ -114,6 +120,9 @@ importers:
       '@clack/prompts':
         specifier: ^1.5.1
         version: 1.5.1
+      '@overstory/config':
+        specifier: workspace:*
+        version: link:../config
       '@overstory/core':
         specifier: workspace:*
         version: link:../core
@@ -121,8 +130,17 @@ importers:
         specifier: ^15.0.0
         version: 15.0.0
 
+  packages/config:
+    dependencies:
+      zod:
+        specifier: ^4.4.3
+        version: 4.4.3
+
   packages/core:
     dependencies:
+      '@overstory/config':
+        specifier: workspace:*
+        version: link:../config
       '@overstory/db':
         specifier: workspace:*
         version: link:../db
@@ -141,6 +159,9 @@ importers:
 
   packages/db:
     dependencies:
+      '@overstory/config':
+        specifier: workspace:*
+        version: link:../config
       drizzle-orm:
         specifier: ^0.45.2
         version: 0.45.2(kysely@0.29.2)(postgres@3.4.9)
@@ -160,6 +181,9 @@ importers:
       '@modelcontextprotocol/sdk':
         specifier: ^1.29.0
         version: 1.29.0(zod@4.4.3)
+      '@overstory/config':
+        specifier: workspace:*
+        version: link:../config
       zod:
         specifier: ^4.4.3
         version: 4.4.3

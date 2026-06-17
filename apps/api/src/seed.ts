@@ -1,5 +1,5 @@
-import './env'
 import { randomUUID } from 'node:crypto'
+import { env } from '@overstory/config'
 import { and, eq } from 'drizzle-orm'
 import { apiKeys, organization, repos } from '@overstory/db/schema'
 import type { WorkspaceId } from '@overstory/db/schema'
@@ -11,8 +11,8 @@ import { mintApiKey } from './lib/api-key'
 // the dashboard slice; here we only need a workspace id for repos + keys to FK to.
 //   pnpm --filter @overstory/api seed   (override: SEED_WORKSPACE, SEED_REPO)
 
-const WORKSPACE = process.env.SEED_WORKSPACE ?? 'Dogfood'
-const REPO = process.env.SEED_REPO ?? 'overstory'
+const WORKSPACE = env.SEED_WORKSPACE ?? 'Dogfood'
+const REPO = env.SEED_REPO ?? 'overstory'
 
 function slugify(s: string): string {
   return s

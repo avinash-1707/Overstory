@@ -10,6 +10,7 @@ import { dirname, resolve } from 'node:path'
 import { promisify } from 'node:util'
 import { Command } from 'commander'
 import * as p from '@clack/prompts'
+import { env } from '@overstory/config'
 import { Llm, type TokenUsage } from '@overstory/core/llm'
 import { analyzeFlow } from '@overstory/core/analysis'
 import { provoke, rankCandidates, selectVitalFew } from '@overstory/core/capture'
@@ -17,14 +18,7 @@ import { readFlowFiles } from './files'
 
 const execFileAsync = promisify(execFile)
 
-// Load env from cwd or the repo root before reading any keys.
-for (const envPath of ['.env', '../../.env']) {
-  try {
-    process.loadEnvFile(envPath)
-  } catch {
-    // no .env at this path — rely on the ambient environment
-  }
-}
+// Env is loaded + validated by @overstory/config (reads .env from cwd / repo root on import).
 
 interface Ranking {
   nonObviousness: number
@@ -79,7 +73,7 @@ async function persist(apiUrl: string, apiKey: string, body: unknown): Promise<P
 }
 
 function makeLlm(): Llm {
-  const apiKey = process.env.OPENROUTER_API_KEY
+  const apiKey = env.OPENROUTER_API_KEY
   if (!apiKey) {
     p.cancel('OPENROUTER_API_KEY is not set.')
     process.exit(1)
@@ -89,8 +83,8 @@ function makeLlm(): Llm {
     referer: 'https://overstory.dev',
     title: 'Overstory',
     models: {
-      reasoning: process.env.OVERSTORY_MODEL_REASONING,
-      fast: process.env.OVERSTORY_MODEL_FAST,
+      reasoning: env.OVERSTORY_MODEL_REASONING,
+      fast: env.OVERSTORY_MODEL_FAST,
     },
     onUsage: logUsage,
   })
@@ -246,8 +240,8 @@ program
       return
     }
 
-    const apiUrl = process.env.OVERSTORY_API_URL
-    const apiKey = process.env.OVERSTORY_API_KEY
+    const apiUrl = env.OVERSTORY_API_URL
+    const apiKey = env.OVERSTORY_API_KEY
 
     if (apiUrl && apiKey) {
       const abs = resolve(path)

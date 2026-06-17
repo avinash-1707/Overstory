@@ -11,11 +11,12 @@
   },
   "scripts": {
     "dev": "tsx src/index.ts",
-    "build": "tsup src/index.ts --format esm --clean",
+    "build": "tsup",
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {
     "@clack/prompts": "^1.5.1",
+    "@overstory/config": "workspace:*",
     "@overstory/core": "workspace:*",
     "commander": "^15.0.0"
   }

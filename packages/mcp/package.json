@@ -11,11 +11,12 @@
   },
   "scripts": {
     "dev": "tsx src/index.ts",
-    "build": "tsup src/index.ts --format esm --clean",
+    "build": "tsup",
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {
     "@modelcontextprotocol/sdk": "^1.29.0",
+    "@overstory/config": "workspace:*",
     "zod": "^4.4.3"
   }
 }

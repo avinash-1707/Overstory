@@ -7,28 +7,18 @@
 //
 // IMPORTANT: stdout is the JSON-RPC channel — diagnostics MUST go to stderr only.
 import { randomUUID } from 'node:crypto'
+import { requireEnv } from '@overstory/config'
 import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js'
 import { StdioServerTransport } from '@modelcontextprotocol/sdk/server/stdio.js'
 import { registerTools } from './tools'
 
-// Pick up OVERSTORY_API_URL / OVERSTORY_API_KEY from the repo .env (dogfood
-// convenience). loadEnvFile overwrites the ambient value for any key present in the
-// file; the .mcp.json launcher passes no env, so .env is the single source here.
-for (const path of ['.env', '../../.env']) {
-  try {
-    process.loadEnvFile(path)
-  } catch {
-    // not present — rely on the ambient environment
-  }
-}
+// Env (OVERSTORY_API_URL / OVERSTORY_API_KEY) is loaded + validated by @overstory/config
+// (it reads the repo .env on import; the .mcp.json launcher passes no env, so .env is the
+// single source). requireEnv throws if either is missing — caught by main().catch below.
 
 async function main(): Promise<void> {
-  const apiUrl = process.env.OVERSTORY_API_URL
-  const apiKey = process.env.OVERSTORY_API_KEY
-  if (!apiUrl || !apiKey) {
-    console.error('overstory-mcp: OVERSTORY_API_URL and OVERSTORY_API_KEY must be set')
-    process.exit(1)
-  }
+  const apiUrl = requireEnv('OVERSTORY_API_URL')
+  const apiKey = requireEnv('OVERSTORY_API_KEY')
 
   const server = new McpServer({ name: 'overstory', version: '0.0.0' })
   // One stdio connection = one agent session (D28) — groups this run's ServeEvents.

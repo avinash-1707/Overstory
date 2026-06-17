@@ -1,4 +1,4 @@
-import './env'
+import '@overstory/config'
 import { desc, sql } from 'drizzle-orm'
 import { serveEvents } from '@overstory/db/schema'
 import { db } from './lib/db'

@@ -2,6 +2,7 @@ import { betterAuth } from 'better-auth'
 import type { BetterAuthPlugin } from 'better-auth'
 import { drizzleAdapter } from 'better-auth/adapters/drizzle'
 import { organization } from 'better-auth/plugins'
+import { env, requireEnv } from '@overstory/config'
 import { schema } from '@overstory/db'
 import type { Db } from '@overstory/db'
 
@@ -17,15 +18,14 @@ import type { Db } from '@overstory/db'
 //       --config apps/api/src/lib/auth.ts \
 //       --output packages/db/src/schema/auth.ts -y
 export function createAuth(db: Db, opts: { baseURL?: string; plugins?: BetterAuthPlugin[] } = {}) {
-  // Hard dependency: better-auth silently falls back to a weak generated dev secret if this
-  // is unset (warns, does not throw), which would mean forgeable sessions in prod. Fail loud.
-  const secret = process.env.BETTER_AUTH_SECRET
-  if (!secret) throw new Error('BETTER_AUTH_SECRET is required')
+  // requireEnv fails loud if BETTER_AUTH_SECRET is unset (better-auth would otherwise use a
+  // weak generated dev secret → forgeable sessions in prod). Env checks live in @overstory/config.
+  const secret = requireEnv('BETTER_AUTH_SECRET')
   return betterAuth({
     database: drizzleAdapter(db, { provider: 'pg', schema }),
     secret,
     // Each origin sets its own baseURL (web :3000, api :3001); falls back to env.
-    baseURL: opts.baseURL ?? process.env.BETTER_AUTH_URL,
+    baseURL: opts.baseURL ?? env.BETTER_AUTH_URL,
     emailAndPassword: { enabled: true },
     // organization defines the schema (Workspace); extra plugins are origin-specific
     // (the web adds tanstackStartCookies, which must come LAST). Schema is generated

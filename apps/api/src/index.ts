@@ -1,4 +1,4 @@
-import './env'
+import { env } from '@overstory/config'
 import { serve } from '@hono/node-server'
 import { Hono } from 'hono'
 import { auth } from './lib/auth'
@@ -24,7 +24,7 @@ app.use('/v1/*', apiKeyAuth)
 app.route('/v1', capture)
 app.route('/v1', mcp)
 
-const port = Number(process.env.PORT ?? 3001)
+const port = env.PORT ?? 3001
 serve({ fetch: app.fetch, port }, ({ port }) => {
   console.log(`api listening on :${port}`)
 })
