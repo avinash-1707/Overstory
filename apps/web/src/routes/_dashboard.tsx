@@ -1,9 +1,18 @@
-import { createFileRoute, Link, Outlet } from '@tanstack/react-router'
+import { createFileRoute, Link, Outlet, redirect, useNavigate } from '@tanstack/react-router'
 import { ThemeToggle } from '../components/ThemeToggle'
+import { authClient } from '../lib/auth-client'
+import { getSession } from '../server/auth.functions'
 
-// Authenticated dashboard shell (D28). Sidebar + content. Auth guard + workspace/repo
-// switcher arrive with the auth pass; for now the dogfood workspace is resolved server-side.
+// Authenticated dashboard shell (D28). Sidebar + content. beforeLoad gates every dashboard
+// route on a Better Auth session (redirect to /sign-in if absent). The tenant data is still
+// the single dogfood workspace (resolveDashCtx); session-derived workspace scope is the D36
+// follow-up.
 export const Route = createFileRoute('/_dashboard')({
+  beforeLoad: async () => {
+    const session = await getSession()
+    if (!session) throw redirect({ to: '/sign-in' })
+    return { user: session.user }
+  },
   component: DashboardLayout,
 })
 
@@ -24,9 +33,12 @@ function DashboardLayout() {
         </nav>
 
         {/* Footer */}
-        <div className="mt-auto flex items-center justify-between border-t border-border px-4 py-3">
-          <span className="text-2xs text-fg-subtle">Dogfood workspace</span>
-          <ThemeToggle />
+        <div className="mt-auto border-t border-border">
+          <div className="flex items-center justify-between px-4 py-3">
+            <span className="text-2xs text-fg-subtle">Dogfood workspace</span>
+            <ThemeToggle />
+          </div>
+          <SignOutButton />
         </div>
       </aside>
 
@@ -49,6 +61,22 @@ function NavLink({ to, label }: { to: string; label: string }) {
     >
       {label}
     </Link>
+  )
+}
+
+function SignOutButton() {
+  const navigate = useNavigate()
+  return (
+    <button
+      type="button"
+      onClick={async () => {
+        await authClient.signOut()
+        navigate({ to: '/sign-in' })
+      }}
+      className="w-full border-t border-border px-4 py-2.5 text-left text-2xs text-fg-subtle transition-colors hover:bg-raised hover:text-fg"
+    >
+      Sign out
+    </button>
   )
 }
 
