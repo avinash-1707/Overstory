@@ -70,7 +70,7 @@ export async function getAlwaysOn(ctx: ServeCtx): Promise<ServedDecision[]> {
     .orderBy(sql`(${decisions.ranking} ->> 'composite')::float desc`)
     .limit(ALWAYS_ON_LIMIT)
   const served = await attachPointers(ctx, rows)
-  await logServe(ctx, 'context', {}, served, start)
+  logServe(ctx, 'context', {}, served, start)
   return served
 }
 
@@ -81,7 +81,7 @@ export async function guardByFiles(ctx: ServeCtx, files: string[]): Promise<Serv
   const start = Date.now()
   const normalized = [...new Set(files.map(normalizePath).filter(Boolean))]
   if (normalized.length === 0) {
-    await logServe(ctx, 'guard', { files: normalized }, [], start)
+    logServe(ctx, 'guard', { files: normalized }, [], start)
     return []
   }
 
@@ -100,13 +100,13 @@ export async function guardByFiles(ctx: ServeCtx, files: string[]): Promise<Serv
     .where(and(eq(decisions.repoId, ctx.repoId), inArray(decisions.status, SERVABLE), fileMatch))
   const ids = idRows.map((r) => r.id)
   if (ids.length === 0) {
-    await logServe(ctx, 'guard', { files: normalized }, [], start)
+    logServe(ctx, 'guard', { files: normalized }, [], start)
     return []
   }
 
   const rows = await ctx.db.select(DECISION_COLS).from(decisions).where(inArray(decisions.id, ids))
   const served = await attachPointers(ctx, rows)
-  await logServe(ctx, 'guard', { files: normalized }, served, start)
+  logServe(ctx, 'guard', { files: normalized }, served, start)
   return served
 }
 
@@ -121,7 +121,7 @@ export async function getDecision(ctx: ServeCtx, id: DecisionId): Promise<Served
     )
     .limit(1)
   const served = (await attachPointers(ctx, rows))[0] ?? null
-  await logServe(ctx, 'decision', { decisionId: id }, served ? [served] : [], start)
+  logServe(ctx, 'decision', { decisionId: id }, served ? [served] : [], start)
   return served
 }
 
@@ -151,27 +151,37 @@ function toServed(r: DecisionRow, where: { filePath: string; symbol: string | nu
   return { id: r.id, title: r.title, statement: r.statement, why: r.rationale.why, where, status, stale: status === 'needs_reconfirmation' }
 }
 
-// ServeEvent (D28): one row per call, lookup + insert in one place. Best-effort —
-// a logging failure must never break the read it describes. D1-safe (ids + query only).
-async function logServe(
+// ServeEvent (D28): one row per call, lookup + insert in one place. Best-effort and
+// fire-and-forget — callers do NOT await it, so the Neon insert round-trip stays off
+// the serving hot path (the MCP client has a tight timeout; an extra ~1s hop per call
+// pushed context/guard over it → degrade-open `unavailable`). A logging failure must
+// never break the read it describes. D1-safe (ids + query only). The node server keeps
+// the event loop alive after responding, so the detached insert still completes.
+function logServe(
   ctx: ServeCtx,
   tool: McpTool,
   query: ServeQuery,
   served: ServedDecision[],
   startMs: number,
-): Promise<void> {
-  try {
-    await ctx.db.insert(serveEvents).values({
-      workspaceId: ctx.workspaceId,
-      repoId: ctx.repoId,
-      sessionId: ctx.sessionId,
-      tool,
-      query,
-      servedDecisionIds: served.map((s) => s.id),
-      conflictDecisionIds: [],
-      latencyMs: Date.now() - startMs,
-    })
-  } catch {
-    // observability, not correctness — swallow
-  }
+): void {
+  // Detached + bulletproof. The inner try swallows insert errors; the trailing .catch()
+  // guarantees the detached promise can NEVER reject (no unhandled rejection that could
+  // crash the process, even if a future edit throws before the try). Returns void so
+  // callers can't accidentally leave a floating promise unguarded.
+  void (async () => {
+    try {
+      await ctx.db.insert(serveEvents).values({
+        workspaceId: ctx.workspaceId,
+        repoId: ctx.repoId,
+        sessionId: ctx.sessionId,
+        tool,
+        query,
+        servedDecisionIds: served.map((s) => s.id),
+        conflictDecisionIds: [],
+        latencyMs: Date.now() - startMs,
+      })
+    } catch {
+      // observability, not correctness — swallow
+    }
+  })().catch(() => {})
 }

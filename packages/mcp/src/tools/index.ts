@@ -78,7 +78,10 @@ async function call(
         'x-overstory-session': cfg.sessionId,
       },
       body: body === undefined ? undefined : JSON.stringify(body),
-      signal: AbortSignal.timeout(4000),
+      // Generous ceiling: serving does a few sequential Neon round-trips and remote
+      // Neon RTT from a dev box is ~1s/hop. 4s used to clip the p100 → spurious
+      // degrade-open. Still bounded so a truly dead backend never hangs the agent.
+      signal: AbortSignal.timeout(8000),
     })
     if (res.status === 404) return { decisions: [], note: 'no matching decision' }
     if (!res.ok) {
