@@ -1,0 +1,111 @@
+/* Overstory web — Editorial / Archival design system (D28/D29).
+   Dark default; light via [data-theme="light"]. Tailwind v4: semantic tokens map to
+   runtime CSS vars in @theme so utilities (bg-bg, text-fg, font-display ...) swap with
+   the theme. Palette values per the locked design plan. No em dashes in any UI copy. */
+@import url('https://fonts.googleapis.com/css2?family=Instrument+Serif:ital@0;1&family=Rethink+Sans:ital,wght@0,400..800;1,400..700&family=JetBrains+Mono:wght@400;500;600&display=swap');
+@import 'tailwindcss';
+
+@theme {
+  /* fonts */
+  --font-display: 'Instrument Serif', Georgia, serif;
+  --font-sans: 'Rethink Sans', ui-sans-serif, system-ui, sans-serif;
+  --font-mono: 'JetBrains Mono', ui-monospace, monospace;
+
+  /* semantic colors -> runtime vars (swap with [data-theme]) */
+  --color-bg: var(--bg);
+  --color-surface: var(--surface);
+  --color-raised: var(--raised);
+  --color-border: var(--border);
+  --color-border-strong: var(--border-strong);
+  --color-fg: var(--fg);
+  --color-fg-muted: var(--fg-muted);
+  --color-fg-subtle: var(--fg-subtle);
+  --color-accent: var(--accent);
+  --color-accent-hover: var(--accent-hover);
+  --color-accent-muted: var(--accent-muted);
+  --color-danger: var(--danger);
+  --color-danger-muted: var(--danger-muted);
+  --color-success: var(--success);
+  --color-success-muted: var(--success-muted);
+
+  /* type scale */
+  --text-2xs: 11px;
+  --text-xs: 13px;
+  --text-sm: 14px;
+  --text-base: 15px;
+  --text-lg: 17px;
+  --text-xl: 20px;
+  --text-2xl: 26px;
+  --text-3xl: 34px;
+  --text-4xl: 44px;
+  --text-5xl: 60px;
+
+  /* radius */
+  --radius-sm: 4px;
+  --radius-md: 6px;
+  --radius-lg: 8px;
+  --radius-xl: 12px;
+
+  /* motion */
+  --ease-out: cubic-bezier(0.16, 1, 0.3, 1);
+  --ease-in: cubic-bezier(0.4, 0, 1, 1);
+  --ease-inout: cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+/* Dark (default) */
+:root {
+  --bg: #0c0c0b;
+  --surface: #141412;
+  --raised: #1c1b18;
+  --border: #2a2926;
+  --border-strong: #3d3b37;
+  --fg: #f2efe8;
+  --fg-muted: #9b9590;
+  --fg-subtle: #5e5b55;
+  --accent: #d4a843;
+  --accent-hover: #e0b84e;
+  --accent-muted: rgba(212, 168, 67, 0.1);
+  --danger: #c4513a;
+  --danger-muted: rgba(196, 81, 58, 0.12);
+  --success: #4a8c6f;
+  --success-muted: rgba(74, 140, 111, 0.12);
+  color-scheme: dark;
+}
+
+[data-theme='light'] {
+  --bg: #f8f5ee;
+  --surface: #ffffff;
+  --raised: #fdfbf7;
+  --border: #e8e3d9;
+  --border-strong: #cec8be;
+  --fg: #1a1916;
+  --fg-muted: #6b6760;
+  --fg-subtle: #a09c96;
+  --accent: #b8903a;
+  --accent-hover: #c9a045;
+  --accent-muted: rgba(184, 144, 58, 0.1);
+  --danger: #b04030;
+  --danger-muted: rgba(176, 64, 48, 0.1);
+  --success: #3d7a5f;
+  --success-muted: rgba(61, 122, 95, 0.1);
+  color-scheme: light;
+}
+
+html,
+body {
+  background: var(--color-bg);
+  color: var(--color-fg);
+  font-family: var(--font-sans);
+  font-size: var(--text-base);
+  line-height: 1.6;
+  -webkit-font-smoothing: antialiased;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    transition-duration: 0.01ms !important;
+  }
+}

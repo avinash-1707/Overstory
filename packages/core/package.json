@@ -7,6 +7,7 @@
     ".": "./src/index.ts",
     "./capture": "./src/capture/index.ts",
     "./serving": "./src/serving/index.ts",
+    "./dashboard": "./src/dashboard/index.ts",
     "./analysis": "./src/analysis/index.ts",
     "./llm": "./src/llm/index.ts",
     "./paths": "./src/paths.ts"
