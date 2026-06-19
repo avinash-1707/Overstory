@@ -20,6 +20,8 @@ recorded design decisions. To avoid undoing an intentional design (D17):
 - At the **start** of a task, call `overstory_context` — the always-on cross-cutting decisions.
 - **Before editing** files, call `overstory_guard` with the repo-relative paths you'll change,
   and read the returned rationale before choosing an approach.
+- **After drafting a change, before finalizing it**, call `overstory_check` with the files you
+  changed and a short summary — it flags any recorded decision your change contradicts (D11).
 - Use `overstory_decision` to read any referenced decision in full.
 
 Setup for the MCP server (`.mcp.json` runs the built `packages/mcp/dist/index.js`):
