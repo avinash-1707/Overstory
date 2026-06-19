@@ -24,6 +24,11 @@ type DecisionStatus = 'proposed' | 'decided' | 'needs_reconfirmation' | 'superse
 // (serving.md). Excluded from the dashboard by default so they don't pollute the signal.
 const UNKNOWN_SESSION = 'unknown'
 
+// Safety ceiling on a single session's timeline — a pathological long-lived session could
+// otherwise materialize thousands of events + their decision fan-out into the page (audit M8).
+// Realistic sessions are far smaller; this only bites the runaway case. Oldest-first (asc).
+const TIMELINE_EVENT_LIMIT = 1000
+
 const WINDOW_MS: Record<Exclude<DashWindow, 'all'>, number> = {
   '7d': 7 * 24 * 60 * 60 * 1000,
   '30d': 30 * 24 * 60 * 60 * 1000,
@@ -136,6 +141,7 @@ export async function getSessionTimeline(ctx: DashCtx, sessionId: string): Promi
     .from(serveEvents)
     .where(and(eq(serveEvents.repoId, ctx.repoId), eq(serveEvents.sessionId, sessionId)))
     .orderBy(asc(serveEvents.createdAt))
+    .limit(TIMELINE_EVENT_LIMIT)
 
   const ids = [
     ...new Set(events.flatMap((e) => [...e.servedDecisionIds, ...e.conflictDecisionIds])),

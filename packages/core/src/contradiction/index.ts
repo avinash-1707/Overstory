@@ -46,9 +46,14 @@ const verdictSchema = z.object({
 // (12k) is both wasteful here and large enough to 402 a low-balance metered account.
 // (PR-time fan-out, D27, may want the cheap-triage-then-Opus-confirm split; deferred.)
 const CHECK_OPTS = { tier: 'reasoning', reasoning: false, maxTokens: 2000 } as const
+// Bound each field fed to the judge: candidate COUNT is capped (FILE_MATCH_LIMIT) but content
+// length is not, so a handful of very long statements could bloat the metered prompt. New
+// captures are length-bounded at ingest, but pre-existing/seeded rows may be longer (audit M4).
+const clip = (s: string, n = 1000): string => (s.length > n ? `${s.slice(0, n)}…` : s)
+
 function buildPrompt(summary: string, candidates: ServedDecision[]): string {
   const list = candidates
-    .map((c) => `- id: ${c.id}\n  decision: ${c.statement}\n  rationale: ${c.why}`)
+    .map((c) => `- id: ${c.id}\n  decision: ${clip(c.statement)}\n  rationale: ${clip(c.why)}`)
     .join('\n')
   return [
     'A coding agent is about to make this change:',

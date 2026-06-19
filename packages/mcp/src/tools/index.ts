@@ -128,7 +128,9 @@ async function call(
     }
     return await res.json()
   } catch (err) {
-    console.error('overstory-mcp: backend unreachable', err)
+    // Log the message only, never the raw error object — defensive against a future error
+    // shape that closes over headers/the bearer key (audit M2). stderr, not the JSON-RPC channel.
+    console.error('overstory-mcp: backend unreachable:', err instanceof Error ? err.message : String(err))
     return { decisions: [], unavailable: true }
   }
 }

@@ -5,7 +5,7 @@
 //   overstory capture <path>   — analyze -> rank -> provoke, then defend (accept/reject)
 //   overstory analyze <path>   — deep-analyze a flow, print ranked candidate decisions
 import { execFile } from 'node:child_process'
-import { stat } from 'node:fs/promises'
+import { stat, writeFile } from 'node:fs/promises'
 import { dirname, resolve } from 'node:path'
 import { promisify } from 'node:util'
 import { Command } from 'commander'
@@ -41,6 +41,17 @@ interface PersistResult {
   flowId: string
   persisted: number
   skipped: number
+  pointerless: number
+}
+
+// Scrub known secrets from any user-facing error text — a reflected backend/LLM response body
+// could otherwise echo the bearer key into the terminal + scrollback (audit M1).
+function redact(s: string): string {
+  let out = s
+  for (const secret of [env.OVERSTORY_API_KEY, env.OPENROUTER_API_KEY]) {
+    if (secret) out = out.split(secret).join('[redacted]')
+  }
+  return out
 }
 
 // Short display title derived from the (possibly long) decision statement.
@@ -263,12 +274,31 @@ program
           pointers: d.pointers,
         })),
       }
-      const r = await spin(
-        'Persisting to Overstory',
-        () => persist(apiUrl, apiKey, body),
-        (r) => `persisted ${r.persisted}, skipped ${r.skipped} dup(s)`,
-      )
-      p.outro(`Captured ${captured.length} · persisted ${r.persisted} (skipped ${r.skipped}) · ${fmtSecs(started)} · ${tok}`)
+      try {
+        const r = await spin(
+          'Persisting to Overstory',
+          () => persist(apiUrl, apiKey, body),
+          (r) => `persisted ${r.persisted}, skipped ${r.skipped} dup(s)`,
+        )
+        if (r.pointerless > 0) {
+          p.log.warn(`${r.pointerless} decision(s) stored without a resolvable file pointer — guard won't surface them.`)
+        }
+        p.outro(`Captured ${captured.length} · persisted ${r.persisted} (skipped ${r.skipped}) · ${fmtSecs(started)} · ${tok}`)
+      } catch (err) {
+        // Don't lose the human's answered provocations to a transient persist failure — dump
+        // them so the run can be retried or POSTed manually (audit M6). Guard the write itself:
+        // if even the dump fails (read-only cwd, disk full), fall back to stdout so the answers
+        // always reach the user.
+        p.log.error(`Persist failed: ${redact(err instanceof Error ? err.message : String(err))}`)
+        const dump = resolve(`overstory-capture-${sha}.json`)
+        try {
+          await writeFile(dump, `${JSON.stringify(body, null, 2)}\n`)
+          p.outro(`Saved ${captured.length} captured decision(s) to ${dump} — re-run capture or POST manually.`)
+        } catch {
+          process.stdout.write(`${JSON.stringify(body, null, 2)}\n`)
+          p.outro(`Could not write dump file — printed ${captured.length} decision(s) above; copy them to re-POST.`)
+        }
+      }
     } else {
       p.log.warn('OVERSTORY_API_URL / OVERSTORY_API_KEY not set — printing JSON instead of persisting.')
       process.stdout.write(`${JSON.stringify(captured, null, 2)}\n`)
@@ -277,6 +307,6 @@ program
   })
 
 program.parseAsync().catch((err: unknown) => {
-  p.log.error(err instanceof Error ? err.message : String(err))
+  p.log.error(redact(err instanceof Error ? err.message : String(err)))
   process.exit(1)
 })

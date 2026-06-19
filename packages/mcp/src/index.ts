@@ -30,6 +30,6 @@ async function main(): Promise<void> {
 }
 
 main().catch((err: unknown) => {
-  console.error('overstory-mcp: failed to start', err)
+  console.error('overstory-mcp: failed to start:', err instanceof Error ? err.message : String(err))
   process.exit(1)
 })

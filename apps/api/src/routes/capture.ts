@@ -86,6 +86,7 @@ capture.post('/capture', async (c) => {
 
     let persisted = 0
     let skipped = 0
+    let pointerless = 0 // persisted but with no resolvable file pointer → never guard-matchable (M5)
     for (const d of body.decisions) {
       // Append-only, skip exact dups on (flowId, statement, capturedFrom). Re-running
       // capture is a no-op for unchanged decisions; never overwrites or deletes (D11).
@@ -146,10 +147,14 @@ capture.post('/capture', async (c) => {
       }
       if (pointerRows.length > 0) {
         await tx.insert(pointers).values(pointerRows).onConflictDoNothing()
+      } else {
+        // Servable via context/search but never via guard (no file→decision edge). Surface the
+        // count so the CLI can warn — e.g. all supplied paths normalized to empty (M5).
+        pointerless++
       }
       persisted++
     }
-    return { flowId, persisted, skipped }
+    return { flowId, persisted, skipped, pointerless }
   })
 
   return c.json(result, 201)

@@ -23,6 +23,7 @@ export const apiKeys = pgTable(
     label: text('label'),
     lastUsedAt: timestamp('last_used_at', { withTimezone: true }),
     expiresAt: timestamp('expires_at', { withTimezone: true }),
+    revokedAt: timestamp('revoked_at', { withTimezone: true }), // set to kill a key NOW, before expiry (audit M9)
     createdAt: createdAt(),
   },
   (t) => [

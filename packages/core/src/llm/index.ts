@@ -191,7 +191,10 @@ export class Llm {
       } catch (err) {
         lastErr = err
         if (err instanceof LlmError) throw err
-        // Network/abort errors are retryable until the budget is exhausted.
+        // A timeout/abort won't resolve by retrying — fail fast instead of burning the budget
+        // (and, on the check path, orphaning spend past the point the agent degraded open) (M3).
+        if (err instanceof Error && (err.name === 'AbortError' || err.name === 'TimeoutError')) break
+        // Other network errors are retryable until the budget is exhausted.
         if (attempt >= this.maxRetries) break
       } finally {
         clearTimeout(timer)

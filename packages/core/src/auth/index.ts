@@ -45,9 +45,12 @@ export function createAuth(db: Db, opts: { baseURL?: string; plugins?: BetterAut
     // decisions + activity. Gate behind OVERSTORY_OPEN_SIGNUP="true" (mint the operator account,
     // then unset). Remove this gate when D36 lands session→workspace scope. See audit C1.
     emailAndPassword: { enabled: true, disableSignUp: env.OVERSTORY_OPEN_SIGNUP !== 'true' },
-    // organization defines the schema (Workspace); extra plugins are origin-specific
-    // (the web adds tanstackStartCookies, which must come LAST). Schema is generated
-    // from the api instance, so origin-only plugins must not add tables.
+    // organization defines the schema (Workspace); any origin-specific plugins are appended
+    // LAST via opts.plugins. The web sets its auth cookies by forwarding Better Auth's
+    // Set-Cookie Response through the /api/auth/$ catch-all route (no plugin needed today); if
+    // it ever sets cookies from inside a createServerFn instead, pass tanstackStartCookies()
+    // here (from better-auth/integrations/tanstack-start) — it must come last. Schema is
+    // generated from the api instance, so origin-only plugins must not add tables.
     plugins: [organization(), ...(opts.plugins ?? [])],
   })
 }
