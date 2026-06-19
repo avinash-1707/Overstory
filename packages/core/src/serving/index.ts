@@ -45,6 +45,9 @@ const ALWAYS_ON_LIMIT = 50
 // pathologically — highest composite wins if it does. Mirrors ALWAYS_ON_LIMIT.
 const FILE_MATCH_LIMIT = 50
 
+// Top-N text matches returned by search — the agent reads them, so keep it tight.
+const SEARCH_LIMIT = 10
+
 interface DecisionRow {
   id: DecisionId
   title: string
@@ -186,6 +189,38 @@ export async function getDecision(ctx: ServeCtx, id: DecisionId): Promise<Served
     .limit(1)
   const served = mapRows(rows)[0] ?? null
   logServe(ctx, 'decision', { decisionId: id }, served ? [served] : [], start)
+  return served
+}
+
+// overstory_search (D32): a fuzzy task description → relevant decisions, for when the agent
+// doesn't yet know which files it'll touch (bridges fuzzy-goal → decisions before a locus
+// exists, D20). Cheap full-text match over title + statement + topics, ranked by ts_rank
+// then composite — NO LLM (stays in the cheap-read tier, so it never depends on credits),
+// and NO index yet: on-the-fly to_tsvector is fine at dogfood scale (a generated tsvector
+// column + GIN index is the deferred optimization). Repo-scoped (D34) like every serving query.
+export async function searchByQuery(ctx: ServeCtx, query: string): Promise<ServedDecision[]> {
+  const start = Date.now()
+  const q = query.trim()
+  if (q.length === 0) {
+    logServe(ctx, 'search', { query }, [], start)
+    return []
+  }
+  // OR semantics: plainto_tsquery AND-joins its lexemes, which is far too strict for a fuzzy
+  // "what I'm building" query (it would require EVERY word present). Sanitize via plainto
+  // (never errors on odd input; ${q} is a bound parameter — no injection), then swap '&'→'|'
+  // so ANY matching lexeme hits, ranked by how well it matches. nullif('') guards an all-
+  // stopwords query (plainto → '' → NULL tsquery → no rows, no error).
+  const tsv = sql`to_tsvector('english', ${decisions.title} || ' ' || ${decisions.statement} || ' ' || array_to_string(${decisions.topics}, ' '))`
+  const tsq = sql`nullif(replace(plainto_tsquery('english', ${q})::text, '&', '|'), '')::tsquery`
+  const rows = await servingBase(ctx)
+    .where(
+      and(eq(decisions.repoId, ctx.repoId), inArray(decisions.status, SERVABLE), sql`${tsv} @@ ${tsq}`),
+    )
+    .groupBy(decisions.id)
+    .orderBy(sql`ts_rank(${tsv}, ${tsq}) desc`, sql`(${decisions.ranking} ->> 'composite')::float desc`)
+    .limit(SEARCH_LIMIT)
+  const served = mapRows(rows)
+  logServe(ctx, 'search', { query }, served, start)
   return served
 }
 

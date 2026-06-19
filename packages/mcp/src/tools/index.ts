@@ -8,8 +8,8 @@ import type { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js'
 //   overstory_context  — always-on tier (D20), call at task start
 //   overstory_guard    — file->decisions prevent (D17), call before editing
 //   overstory_check    — contradiction CATCH (D11), call after drafting a change
+//   overstory_search   — fuzzy task -> decisions (D32), when the locus isn't known yet
 //   overstory_decision — read one decision in full
-// search lands after dogfood validates the agent actually pulls.
 
 export interface ServeConfig {
   apiUrl: string // no trailing slash
@@ -76,6 +76,21 @@ export function registerTools(server: McpServer, cfg: ServeConfig): void {
     // Longer timeout than the reads: check runs an LLM judgment server-side (~10-30s).
     async ({ files, summary }) =>
       text(await call(cfg, 'POST', '/v1/mcp/check', { files, summary }, 60_000)),
+  )
+
+  server.registerTool(
+    'overstory_search',
+    {
+      title: 'Overstory: find decisions relevant to a task',
+      description:
+        "When you don't yet know which files you'll touch, call this with a short description " +
+        "of what you're about to build or change to find the architectural decisions relevant " +
+        'to it. Use it at task start to surface decisions the always-on set may not cover.',
+      inputSchema: {
+        query: z.string().describe('a short description of what you are about to build or change'),
+      },
+    },
+    async ({ query }) => text(await call(cfg, 'POST', '/v1/mcp/search', { query })),
   )
 }
 

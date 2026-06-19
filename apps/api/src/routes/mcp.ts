@@ -1,7 +1,7 @@
 import { Hono } from 'hono'
 import type { Context } from 'hono'
 import { z } from 'zod'
-import { getAlwaysOn, getDecision, guardByFiles } from '@overstory/core/serving'
+import { getAlwaysOn, getDecision, guardByFiles, searchByQuery } from '@overstory/core/serving'
 import type { ServeCtx } from '@overstory/core/serving'
 import { checkContradictions } from '@overstory/core/contradiction'
 import type { DecisionId } from '@overstory/db/schema'
@@ -20,6 +20,7 @@ const checkBody = z.object({
   files: z.array(z.string()).default([]),
   summary: z.string().default(''),
 })
+const searchBody = z.object({ query: z.string().default('') })
 
 // Build the tenant-scoped serve context, or null if the key isn't repo-bound.
 function serveCtx(c: Context<{ Variables: AuthVars }>): ServeCtx | null {
@@ -63,6 +64,15 @@ mcp.post('/mcp/check', async (c) => {
     console.error('mcp/check failed', err)
     return c.json({ conflicts: [] })
   }
+})
+
+// fuzzy task → decisions (D32). Cheap read, no LLM.
+mcp.post('/mcp/search', async (c) => {
+  const ctx = serveCtx(c)
+  if (!ctx) return c.json({ error: 'api key is not bound to a repo' }, 400)
+  const parsed = searchBody.safeParse(await c.req.json().catch(() => null))
+  if (!parsed.success) return c.json({ error: 'invalid body', detail: parsed.error.issues }, 400)
+  return c.json({ decisions: await searchByQuery(ctx, parsed.data.query) })
 })
 
 // read one decision in full

@@ -3,7 +3,8 @@
 // tool calls to the Overstory backend (api). See docs/technical/serving.md.
 //
 // Tools: overstory_context (always-on, D20), overstory_guard (file→decisions, D17),
-// overstory_check (contradiction catch, D11), overstory_decision (read one). search lands later.
+// overstory_check (contradiction catch, D11), overstory_search (fuzzy task→decisions, D32),
+// overstory_decision (read one).
 //
 // IMPORTANT: stdout is the JSON-RPC channel — diagnostics MUST go to stderr only.
 import { randomUUID } from 'node:crypto'
