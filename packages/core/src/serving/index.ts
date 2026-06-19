@@ -39,6 +39,12 @@ const SERVABLE: ('decided' | 'needs_reconfirmation')[] = ['decided', 'needs_reco
 // this small in practice; the cap is insurance). Highest composite wins if it bites.
 const ALWAYS_ON_LIMIT = 50
 
+// Defensive ceiling on the file→decision lookup. A file in a hot directory could match many
+// decisions; uncapped, guard would dump them all and check would feed an oversized prompt to
+// the judge (truncation + cost risk). Realistic counts are tiny, so this only bites
+// pathologically — highest composite wins if it does. Mirrors ALWAYS_ON_LIMIT.
+const FILE_MATCH_LIMIT = 50
+
 interface DecisionRow {
   id: DecisionId
   title: string
@@ -112,23 +118,26 @@ export async function getAlwaysOn(ctx: ServeCtx): Promise<ServedDecision[]> {
   return served
 }
 
-// On-demand guard (D17): decisions whose pointers govern any of the touched files —
-// exact match OR an ancestor directory of the file. starts_with (not LIKE) so '_'/'%'
-// in paths can't widen the match, and 'src/auth' never matches 'src/authentication.ts'.
-export async function guardByFiles(ctx: ServeCtx, files: string[]): Promise<ServedDecision[]> {
-  const start = Date.now()
-  const normalized = [...new Set(files.map(normalizePath).filter(Boolean))]
-  if (normalized.length === 0) {
-    logServe(ctx, 'guard', { files: normalized }, [], start)
-    return []
-  }
+// Normalize + dedupe a caller-supplied path list. Idempotent. Shared by guard + check.
+export function normalizeFiles(files: string[]): string[] {
+  return [...new Set(files.map(normalizePath).filter(Boolean))]
+}
+
+// File→decision lookup WITHOUT logging — the shared core of guard (D17) and the
+// contradiction check (D11). Returns decisions whose pointers govern any of the files
+// (exact match OR an ancestor directory), each hydrated with ALL its loci. starts_with
+// (not LIKE) so '_'/'%' in paths can't widen the match, and 'src/auth' never matches
+// 'src/authentication.ts'. Callers that surface this to the agent log their own ServeEvent.
+export async function findDecisionsByFiles(ctx: ServeCtx, files: string[]): Promise<ServedDecision[]> {
+  const normalized = normalizeFiles(files)
+  // INVARIANT: return before building fileMatch when empty. or(...[]) → undefined would make
+  // the exists() WHERE collapse to the bare decision_id correlation — matching EVERY decision
+  // in the repo. Do not remove this early return.
+  if (normalized.length === 0) return []
 
   // A decision is SELECTED when one of its pointers matches a touched file, but is HYDRATED
   // with ALL its loci (the base LEFT JOIN in servingBase) — so selection uses a SEPARATELY
   // aliased pointers table inside exists(), keeping it distinct from the hydration join.
-  // INVARIANT: normalized is non-empty here (guarded by the early return above). If it were
-  // empty, or(...[]) → undefined and the exists() WHERE collapses to the bare decision_id
-  // correlation — matching EVERY decision in the repo. Do not remove that early return.
   const matchPtr = alias(pointers, 'match_ptr')
   const fileMatch = or(
     ...normalized.map((f) =>
@@ -152,7 +161,16 @@ export async function guardByFiles(ctx: ServeCtx, files: string[]): Promise<Serv
       ),
     )
     .groupBy(decisions.id)
-  const served = mapRows(rows)
+    .orderBy(sql`(${decisions.ranking} ->> 'composite')::float desc`)
+    .limit(FILE_MATCH_LIMIT)
+  return mapRows(rows)
+}
+
+// On-demand guard (D17): the file→decision lookup + a 'guard' ServeEvent.
+export async function guardByFiles(ctx: ServeCtx, files: string[]): Promise<ServedDecision[]> {
+  const start = Date.now()
+  const normalized = normalizeFiles(files)
+  const served = await findDecisionsByFiles(ctx, normalized)
   logServe(ctx, 'guard', { files: normalized }, served, start)
   return served
 }
@@ -182,12 +200,15 @@ function toServed(r: DecisionRow, where: { filePath: string; symbol: string | nu
 // pushed context/guard over it → degrade-open `unavailable`). A logging failure must
 // never break the read it describes. D1-safe (ids + query only). The node server keeps
 // the event loop alive after responding, so the detached insert still completes.
-function logServe(
+// Exported so the contradiction check (a separate core module) logs its 'check' event
+// through the same path — keeping the "lookup + insert in one place" property (D28).
+export function logServe(
   ctx: ServeCtx,
   tool: McpTool,
   query: ServeQuery,
   served: ServedDecision[],
   startMs: number,
+  conflicts: ServedDecision[] = [],
 ): void {
   // Detached + bulletproof. The inner try swallows insert errors; the trailing .catch()
   // guarantees the detached promise can NEVER reject (no unhandled rejection that could
@@ -202,7 +223,7 @@ function logServe(
         tool,
         query,
         servedDecisionIds: served.map((s) => s.id),
-        conflictDecisionIds: [],
+        conflictDecisionIds: conflicts.map((c) => c.id),
         latencyMs: Date.now() - startMs,
       })
     } catch {

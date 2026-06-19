@@ -7,8 +7,9 @@ import type { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js'
 //
 //   overstory_context  — always-on tier (D20), call at task start
 //   overstory_guard    — file->decisions prevent (D17), call before editing
+//   overstory_check    — contradiction CATCH (D11), call after drafting a change
 //   overstory_decision — read one decision in full
-// check (D11) + search land after dogfood validates the agent actually pulls.
+// search lands after dogfood validates the agent actually pulls.
 
 export interface ServeConfig {
   apiUrl: string // no trailing slash
@@ -58,6 +59,24 @@ export function registerTools(server: McpServer, cfg: ServeConfig): void {
     },
     async ({ id }) => text(await call(cfg, 'GET', `/v1/mcp/decision/${encodeURIComponent(id)}`)),
   )
+
+  server.registerTool(
+    'overstory_check',
+    {
+      title: 'Overstory: check a change against recorded decisions before finalizing',
+      description:
+        'AFTER drafting a change but BEFORE finalizing it, call this with the repo-relative ' +
+        'files you changed and a short summary of what you did. Returns any recorded design ' +
+        'decisions your change may contradict, so you can reconsider before committing.',
+      inputSchema: {
+        files: z.array(z.string()).describe('repo-relative paths you changed'),
+        summary: z.string().describe('a short summary of what you changed'),
+      },
+    },
+    // Longer timeout than the reads: check runs an LLM judgment server-side (~10-30s).
+    async ({ files, summary }) =>
+      text(await call(cfg, 'POST', '/v1/mcp/check', { files, summary }, 60_000)),
+  )
 }
 
 // Call the backend. Degrade OPEN: if Overstory is unreachable or errors, return an
@@ -68,6 +87,7 @@ async function call(
   method: 'GET' | 'POST',
   path: string,
   body?: unknown,
+  timeoutMs = 8000,
 ): Promise<unknown> {
   try {
     const res = await fetch(`${cfg.apiUrl}${path}`, {
@@ -78,10 +98,11 @@ async function call(
         'x-overstory-session': cfg.sessionId,
       },
       body: body === undefined ? undefined : JSON.stringify(body),
-      // Generous ceiling: serving does a few sequential Neon round-trips and remote
-      // Neon RTT from a dev box is ~1s/hop. 4s used to clip the p100 → spurious
-      // degrade-open. Still bounded so a truly dead backend never hangs the agent.
-      signal: AbortSignal.timeout(8000),
+      // Generous ceiling: serving does a Neon round-trip and remote Neon RTT from a dev box
+      // is ~1s (plus scale-to-zero cold starts). 4s used to clip the p100 → spurious
+      // degrade-open. check overrides this (LLM judgment ~10-30s). Still bounded so a truly
+      // dead backend never hangs the agent.
+      signal: AbortSignal.timeout(timeoutMs),
     })
     if (res.status === 404) return { decisions: [], note: 'no matching decision' }
     if (!res.ok) {
