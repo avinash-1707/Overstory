@@ -4,6 +4,7 @@ import { z } from 'zod'
 import { decisions, flows, pointers } from '@overstory/db/schema'
 import type { FlowId } from '@overstory/db/schema'
 import { normalizePath } from '@overstory/core/paths'
+import { composite } from '@overstory/core/capture'
 import { db } from '../lib/db'
 import type { AuthVars } from '../middleware/auth'
 
@@ -14,30 +15,39 @@ import type { AuthVars } from '../middleware/auth'
 // alwaysOn (D20) is derived server-side from the composite rank — clients don't set it.
 const ALWAYS_ON_THRESHOLD = 0.66
 
+const clamp01 = (n: number): number => (n < 0 ? 0 : n > 1 ? 1 : n)
+
+// Ranking SIGNALS only — `composite` is recomputed server-side and never trusted from the
+// client, because it drives the always-on tier (D20) AND the serving ORDER BY. z.number()
+// rejects NaN/Infinity (an Infinity would corrupt the `::float` sort and force always-on);
+// each signal is clamped to [0,1] before composite() is applied (audit H3/H6).
+const signal = z.number()
 const rankingSchema = z.object({
-  nonObviousness: z.number(),
-  blastRadius: z.number(),
-  bannedDefaultProximity: z.number(),
-  composite: z.number(),
+  nonObviousness: signal,
+  blastRadius: signal,
+  bannedDefaultProximity: signal,
 })
 
+// Upper bounds on every field: the body is ApiKey-authed, but its content is LLM-derived, so an
+// oversized/flooded payload (unbounded rows, multi-MB strings) is a real write-DoS. Caps are
+// generous — they bound the pathological case, not normal capture (audit H4).
 const decisionSchema = z.object({
-  title: z.string().min(1),
-  statement: z.string().min(1),
+  title: z.string().min(1).max(200),
+  statement: z.string().min(1).max(4000),
   rationale: z.object({
-    why: z.string(),
+    why: z.string().max(4000),
     capturedFrom: z.enum(['reject', 'accept', 'seed_confirmed']),
   }),
   ranking: rankingSchema,
-  alternativesConsidered: z.array(z.string()).default([]),
-  pointers: z.array(z.string()).default([]),
-  topics: z.array(z.string()).default([]),
+  alternativesConsidered: z.array(z.string().max(2000)).max(20).default([]),
+  pointers: z.array(z.string().max(1024)).max(100).default([]),
+  topics: z.array(z.string().max(100)).max(50).default([]),
 })
 
 const bodySchema = z.object({
-  flow: z.object({ name: z.string().min(1), description: z.string().default('') }),
-  resolvedSha: z.string().min(1),
-  decisions: z.array(decisionSchema).min(1),
+  flow: z.object({ name: z.string().min(1).max(200), description: z.string().max(4000).default('') }),
+  resolvedSha: z.string().min(1).max(64),
+  decisions: z.array(decisionSchema).min(1).max(200),
 })
 
 export const capture = new Hono<{ Variables: AuthVars }>()
@@ -96,6 +106,16 @@ capture.post('/capture', async (c) => {
         continue
       }
 
+      // Clamp signals to [0,1] and recompute composite server-side; the client's composite (if
+      // any) is ignored. This value is the sole input to the always-on tier + serving sort.
+      const ranking = {
+        nonObviousness: clamp01(d.ranking.nonObviousness),
+        blastRadius: clamp01(d.ranking.blastRadius),
+        bannedDefaultProximity: clamp01(d.ranking.bannedDefaultProximity),
+        composite: 0,
+      }
+      ranking.composite = composite(ranking)
+
       const decisionRows = await tx
         .insert(decisions)
         .values({
@@ -107,8 +127,8 @@ capture.post('/capture', async (c) => {
           rationale: d.rationale,
           alternativesConsidered: d.alternativesConsidered,
           topics: d.topics,
-          ranking: d.ranking,
-          alwaysOn: d.ranking.composite >= ALWAYS_ON_THRESHOLD,
+          ranking,
+          alwaysOn: ranking.composite >= ALWAYS_ON_THRESHOLD,
           captureMethod: d.rationale.capturedFrom === 'seed_confirmed' ? 'seeded_confirmed' : 'provoked',
         })
         .returning({ id: decisions.id })

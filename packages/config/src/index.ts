@@ -23,6 +23,11 @@ const schema = z.object({
   BETTER_AUTH_SECRET: z.string().min(1).optional(),
   BETTER_AUTH_URL: z.string().url().optional(),
   WEB_BASE_URL: z.string().url().optional(),
+  // Public email/password sign-up. Defaults CLOSED (any non-"true" value, incl. unset,
+  // disables sign-up) — until the dashboard derives tenant scope from the session (D36),
+  // an open form + the single seeded workspace = cross-tenant read. Set to "true" only to
+  // mint the operator account out-of-band, then unset. See docs/audits/2026-06-19.md (C1).
+  OVERSTORY_OPEN_SIGNUP: z.string().min(1).optional(),
   // LLM via OpenRouter (D31)
   OPENROUTER_API_KEY: z.string().min(1).optional(),
   OVERSTORY_MODEL_REASONING: z.string().min(1).optional(),

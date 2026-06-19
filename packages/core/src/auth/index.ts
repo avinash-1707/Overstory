@@ -21,12 +21,30 @@ export function createAuth(db: Db, opts: { baseURL?: string; plugins?: BetterAut
   // requireEnv fails loud if BETTER_AUTH_SECRET is unset (better-auth would otherwise use a
   // weak generated dev secret → forgeable sessions in prod). Env checks live in @overstory/config.
   const secret = requireEnv('BETTER_AUTH_SECRET')
+  // Explicit origin allowlist for the cookie auth endpoints (CSRF backstop). D37 runs two
+  // origins (web :3000 + api :3001) on ONE secret+DB, so each must trust the other; without
+  // this Better Auth defaults to baseURL-only. Only set when non-empty (audit H5).
+  const trustedOrigins = [
+    ...new Set(
+      [opts.baseURL, env.WEB_BASE_URL, env.BETTER_AUTH_URL].filter((u): u is string => Boolean(u)),
+    ),
+  ]
   return betterAuth({
     database: drizzleAdapter(db, { provider: 'pg', schema }),
     secret,
     // Each origin sets its own baseURL (web :3000, api :3001); falls back to env.
     baseURL: opts.baseURL ?? env.BETTER_AUTH_URL,
-    emailAndPassword: { enabled: true },
+    ...(trustedOrigins.length > 0 ? { trustedOrigins } : {}),
+    // Built-in throttle on the auth endpoints (brute-force backstop). Better Auth defaults this
+    // OFF outside production; enable it everywhere. In-memory store suits one instance — a
+    // shared store lands with multi-instance deploy (audit H2).
+    rateLimit: { enabled: true },
+    // Sign-up is CLOSED by default: resolveDashCtx (apps/web) still serves the single seeded
+    // workspace regardless of who logs in (session-derived tenant scope is the D36 follow-up),
+    // so an open sign-up form lets any self-registered stranger read the dogfood tenant's
+    // decisions + activity. Gate behind OVERSTORY_OPEN_SIGNUP="true" (mint the operator account,
+    // then unset). Remove this gate when D36 lands session→workspace scope. See audit C1.
+    emailAndPassword: { enabled: true, disableSignUp: env.OVERSTORY_OPEN_SIGNUP !== 'true' },
     // organization defines the schema (Workspace); extra plugins are origin-specific
     // (the web adds tanstackStartCookies, which must come LAST). Schema is generated
     // from the api instance, so origin-only plugins must not add tables.

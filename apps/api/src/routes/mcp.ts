@@ -7,6 +7,7 @@ import { checkContradictions } from '@overstory/core/contradiction'
 import type { DecisionId } from '@overstory/db/schema'
 import { db } from '../lib/db'
 import { getLlm } from '../lib/llm'
+import { rateLimit } from '../lib/rate-limit'
 import type { AuthVars } from '../middleware/auth'
 
 // /v1/mcp/* — the serving surface the MCP server proxies to. ApiKey-scoped (the
@@ -21,6 +22,10 @@ const checkBody = z.object({
   summary: z.string().default(''),
 })
 const searchBody = z.object({ query: z.string().default('') })
+
+// Per-key ceiling on the only metered (LLM) path. A normal agent makes a handful of checks per
+// task; 30/min absorbs that while stopping a runaway loop from draining credits (audit H2).
+const CHECK_CALLS_PER_MIN = 30
 
 // Build the tenant-scoped serve context, or null if the key isn't repo-bound.
 function serveCtx(c: Context<{ Variables: AuthVars }>): ServeCtx | null {
@@ -55,6 +60,13 @@ mcp.post('/mcp/check', async (c) => {
   if (!ctx) return c.json({ error: 'api key is not bound to a repo' }, 400)
   const parsed = checkBody.safeParse(await c.req.json().catch(() => null))
   if (!parsed.success) return c.json({ error: 'invalid body', detail: parsed.error.issues }, 400)
+  // Cost guard on the only metered path: over the per-key ceiling, degrade open (empty
+  // conflicts, 200) rather than error the agent — same contract as a missing LLM key.
+  const { apiKeyId } = c.get('auth')
+  if (!rateLimit(`check:${apiKeyId}`, CHECK_CALLS_PER_MIN, 60_000).ok) {
+    console.warn(`mcp/check rate-limited apiKey=${apiKeyId}`)
+    return c.json({ conflicts: [] })
+  }
   // Degrade open: no LLM key (or any failure) → no conflicts, never block the agent.
   const llm = getLlm()
   if (!llm) return c.json({ conflicts: [] })

@@ -14,6 +14,14 @@ import { mcp } from './routes/mcp'
 
 const app = new Hono<{ Variables: AuthVars }>()
 
+// Global failsafe: any uncaught error (incl. a DB lookup that throws in apiKeyAuth) becomes a
+// generic 500 with no body, never a leaked stack or a hung request (audit H1). The auth gate
+// stays fail-CLOSED — a thrown error never lets an unauthenticated request through.
+app.onError((err, c) => {
+  console.error('api error', err)
+  return c.json({ error: 'internal error' }, 500)
+})
+
 app.get('/health', (c) => c.json({ ok: true }))
 
 // Better Auth — session-based human auth (web app + future dashboard).

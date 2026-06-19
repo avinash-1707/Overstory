@@ -25,9 +25,12 @@ export function getLlm(): Llm | null {
     title: 'Overstory',
     models: { reasoning: env.OVERSTORY_MODEL_REASONING, fast: env.OVERSTORY_MODEL_FAST },
     onUsage: logUsage,
-    // Bound a single attempt under the MCP client's 60s patience (tools/index.ts) so a slow
-    // call doesn't orphan too far past the point the agent already degraded open.
-    timeoutMs: 50_000,
+    // Bound TOTAL wall-clock well under the MCP client's patience. check is advisory and
+    // degrades open, so one attempt + at most one retry is plenty; worst case ~25s+backoff+25s.
+    // The MCP proxy aborts check at 30s (tools/index.ts) and degrades open, so a slow call never
+    // blocks the agent — at most it orphans a bounded retry. (audit H6/M3)
+    timeoutMs: 25_000,
+    maxRetries: 1,
   })
   return cached
 }

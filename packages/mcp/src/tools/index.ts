@@ -73,9 +73,11 @@ export function registerTools(server: McpServer, cfg: ServeConfig): void {
         summary: z.string().describe('a short summary of what you changed'),
       },
     },
-    // Longer timeout than the reads: check runs an LLM judgment server-side (~10-30s).
+    // Longer timeout than the reads: check runs an LLM judgment server-side (~10-30s). Capped
+    // at 30s (not 60s) so the agent gets a degrade-open result well under its own MCP request
+    // timeout; the backend bounds its own LLM wall-clock to match (lib/llm.ts). (audit H6)
     async ({ files, summary }) =>
-      text(await call(cfg, 'POST', '/v1/mcp/check', { files, summary }, 60_000)),
+      text(await call(cfg, 'POST', '/v1/mcp/check', { files, summary }, 30_000)),
   )
 
   server.registerTool(
