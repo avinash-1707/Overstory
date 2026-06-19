@@ -2,7 +2,8 @@
 // context (always-on, D20), guard (file→decisions prevent, D17), decision (read one).
 // Every lookup writes a ServeEvent (D28) in the SAME place it serves, so logging the
 // agent's consumption is structurally impossible to forget. Cheap reads, no LLM.
-import { and, eq, inArray, or, sql } from 'drizzle-orm'
+import { and, eq, exists, inArray, or, sql } from 'drizzle-orm'
+import { alias } from 'drizzle-orm/pg-core'
 import { decisions, pointers, serveEvents } from '@overstory/db/schema'
 import type { Db } from '@overstory/db'
 import type { DecisionId, RepoId, ServeQuery, WorkspaceId } from '@overstory/db/schema'
@@ -54,12 +55,48 @@ const DECISION_COLS = {
   status: decisions.status,
 }
 
+// Pointers hydrated in the SAME query via a LEFT JOIN + json_agg (D35 collapse): the old
+// per-call pattern was decisions-query + a separate attachPointers-query (2 hops for context,
+// 3 for guard), each a remote Neon round-trip that pushed latency toward the MCP abort. The
+// join lets Drizzle TRACK both tables and so QUALIFY the columns ("pointers"."file_path"); a
+// correlated subquery referencing ${decisions.id} does NOT work — Drizzle emits the bare,
+// unqualified "id" there, which binds to pointers' own id and matches nothing. `filter` drops
+// the null row a LEFT JOIN leaves for a decision with no pointers; coalesce → '[]' for it.
+// Tenant boundary holds (D34, "Serving tenant scope via the decisions join"): pointers are
+// reached only via decision_id, and every query below scopes decisions by repoId, so a
+// pointer is never read outside the caller's repo. The postgres driver parses json → array.
+const POINTERS_AGG = sql<{ filePath: string; symbol: string | null }[]>`coalesce(
+    json_agg(json_build_object('filePath', ${pointers.filePath}, 'symbol', ${pointers.symbol}))
+      filter (where ${pointers.decisionId} is not null),
+    '[]'::json)`
+
+const SERVE_COLS = { ...DECISION_COLS, pointers: POINTERS_AGG }
+
+// decisions LEFT JOIN pointers, hydrated in one round-trip. Callers add the repo-scoped
+// WHERE, then groupBy(decisions.id) (PK → the other selected cols are functionally dependent).
+function servingBase(ctx: ServeCtx) {
+  return ctx.db
+    .select(SERVE_COLS)
+    .from(decisions)
+    .leftJoin(pointers, eq(pointers.decisionId, decisions.id))
+}
+
+interface ServeRow extends DecisionRow {
+  pointers: { filePath: string; symbol: string | null }[]
+}
+
+// Defensive: never serve a non-servable status even if a caller forgot the WHERE filter
+// (toServed would otherwise coerce it to 'decided' — a silent D11/freshness violation).
+function mapRows(rows: ServeRow[]): ServedDecision[] {
+  return rows
+    .filter((r) => r.status === 'decided' || r.status === 'needs_reconfirmation')
+    .map((r) => toServed(r, r.pointers ?? []))
+}
+
 // Always-on tier (D20): the cross-cutting decisions injected at session start.
 export async function getAlwaysOn(ctx: ServeCtx): Promise<ServedDecision[]> {
   const start = Date.now()
-  const rows = await ctx.db
-    .select(DECISION_COLS)
-    .from(decisions)
+  const rows = await servingBase(ctx)
     .where(
       and(
         eq(decisions.repoId, ctx.repoId),
@@ -67,9 +104,10 @@ export async function getAlwaysOn(ctx: ServeCtx): Promise<ServedDecision[]> {
         inArray(decisions.status, SERVABLE),
       ),
     )
+    .groupBy(decisions.id)
     .orderBy(sql`(${decisions.ranking} ->> 'composite')::float desc`)
     .limit(ALWAYS_ON_LIMIT)
-  const served = await attachPointers(ctx, rows)
+  const served = mapRows(rows)
   logServe(ctx, 'context', {}, served, start)
   return served
 }
@@ -85,27 +123,36 @@ export async function guardByFiles(ctx: ServeCtx, files: string[]): Promise<Serv
     return []
   }
 
+  // A decision is SELECTED when one of its pointers matches a touched file, but is HYDRATED
+  // with ALL its loci (the base LEFT JOIN in servingBase) — so selection uses a SEPARATELY
+  // aliased pointers table inside exists(), keeping it distinct from the hydration join.
+  // INVARIANT: normalized is non-empty here (guarded by the early return above). If it were
+  // empty, or(...[]) → undefined and the exists() WHERE collapses to the bare decision_id
+  // correlation — matching EVERY decision in the repo. Do not remove that early return.
+  const matchPtr = alias(pointers, 'match_ptr')
   const fileMatch = or(
     ...normalized.map((f) =>
-      or(eq(pointers.filePath, f), sql`starts_with(${f}, ${pointers.filePath} || '/')`),
+      or(eq(matchPtr.filePath, f), sql`starts_with(${f}, ${matchPtr.filePath} || '/')`),
     ),
   )
-  // Tenant boundary: pointers has no repo_id, so the decisions join + d.repo_id is the
-  // ONLY thing scoping this to the caller's repo. Select distinct ids through the join,
-  // then hydrate — avoids DISTINCT over the jsonb rationale column.
-  const idRows = await ctx.db
-    .selectDistinct({ id: decisions.id })
-    .from(decisions)
-    .innerJoin(pointers, eq(pointers.decisionId, decisions.id))
-    .where(and(eq(decisions.repoId, ctx.repoId), inArray(decisions.status, SERVABLE), fileMatch))
-  const ids = idRows.map((r) => r.id)
-  if (ids.length === 0) {
-    logServe(ctx, 'guard', { files: normalized }, [], start)
-    return []
-  }
-
-  const rows = await ctx.db.select(DECISION_COLS).from(decisions).where(inArray(decisions.id, ids))
-  const served = await attachPointers(ctx, rows)
+  // Tenant boundary (D34): pointers has no repo_id, so d.repo_id in the WHERE is the ONLY
+  // thing scoping this to the caller's repo. The exists() correlates match_ptr to this repo's
+  // decisions via decision_id, so the match can't escape the repo. One round-trip (D35).
+  const rows = await servingBase(ctx)
+    .where(
+      and(
+        eq(decisions.repoId, ctx.repoId),
+        inArray(decisions.status, SERVABLE),
+        exists(
+          ctx.db
+            .select({ n: sql`1` })
+            .from(matchPtr)
+            .where(and(eq(matchPtr.decisionId, decisions.id), fileMatch)),
+        ),
+      ),
+    )
+    .groupBy(decisions.id)
+  const served = mapRows(rows)
   logServe(ctx, 'guard', { files: normalized }, served, start)
   return served
 }
@@ -113,37 +160,15 @@ export async function guardByFiles(ctx: ServeCtx, files: string[]): Promise<Serv
 // Read one decision in full, repo-scoped. Returns null if absent or not servable.
 export async function getDecision(ctx: ServeCtx, id: DecisionId): Promise<ServedDecision | null> {
   const start = Date.now()
-  const rows = await ctx.db
-    .select(DECISION_COLS)
-    .from(decisions)
+  const rows = await servingBase(ctx)
     .where(
       and(eq(decisions.id, id), eq(decisions.repoId, ctx.repoId), inArray(decisions.status, SERVABLE)),
     )
+    .groupBy(decisions.id)
     .limit(1)
-  const served = (await attachPointers(ctx, rows))[0] ?? null
+  const served = mapRows(rows)[0] ?? null
   logServe(ctx, 'decision', { decisionId: id }, served ? [served] : [], start)
   return served
-}
-
-// Hydrate decisions with their code pointers (one extra query, grouped in memory).
-async function attachPointers(ctx: ServeCtx, rows: DecisionRow[]): Promise<ServedDecision[]> {
-  // Defensive: never serve a non-servable status even if a caller forgot the filter
-  // (toServed would otherwise coerce it to 'decided' — a silent D11/freshness violation).
-  const servable = rows.filter((r) => r.status === 'decided' || r.status === 'needs_reconfirmation')
-  if (servable.length === 0) return []
-  const ids = servable.map((r) => r.id)
-  const ptrs = await ctx.db
-    .select({ decisionId: pointers.decisionId, filePath: pointers.filePath, symbol: pointers.symbol })
-    .from(pointers)
-    .where(inArray(pointers.decisionId, ids))
-
-  const byDecision = new Map<string, { filePath: string; symbol: string | null }[]>()
-  for (const p of ptrs) {
-    const list = byDecision.get(p.decisionId) ?? []
-    list.push({ filePath: p.filePath, symbol: p.symbol })
-    byDecision.set(p.decisionId, list)
-  }
-  return servable.map((r) => toServed(r, byDecision.get(r.id) ?? []))
 }
 
 function toServed(r: DecisionRow, where: { filePath: string; symbol: string | null }[]): ServedDecision {
