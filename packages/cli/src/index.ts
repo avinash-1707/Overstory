@@ -195,9 +195,12 @@ program
       (a) => `${a.candidateDecisions.length} candidate decision(s)`,
     )
 
+    // Upper bound (L5 audit): each provocation is an LLM round-trip, so an absurd --budget
+    // would burn credits/time with no benefit (the effective cap is candidate count anyway).
+    const MAX_BUDGET = 20
     const budget = Number(opts.budget)
-    if (!Number.isInteger(budget) || budget < 1) {
-      p.cancel('--budget must be a positive integer')
+    if (!Number.isInteger(budget) || budget < 1 || budget > MAX_BUDGET) {
+      p.cancel(`--budget must be an integer between 1 and ${MAX_BUDGET}`)
       process.exit(1)
     }
 

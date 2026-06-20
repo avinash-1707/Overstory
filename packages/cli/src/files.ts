@@ -1,5 +1,5 @@
 import { readdir, readFile, stat } from 'node:fs/promises'
-import { extname, join, relative } from 'node:path'
+import { extname, join, relative, resolve, sep } from 'node:path'
 import type { FlowFile } from '@overstory/core/analysis'
 
 const SOURCE_EXT = new Set(['.ts', '.tsx', '.js', '.jsx', '.mjs', '.cjs', '.mts', '.cts'])
@@ -23,15 +23,23 @@ export async function readFlowFiles(root: string, opts: ReadFlowOptions = {}): P
     return [{ path: root, content: clip(await readFile(root, 'utf8'), maxFileBytes) }]
   }
 
+  // Containment root: every file read must resolve under here. Symlinked *files* are skipped
+  // (a symlink could point outside the tree); symlinked *dirs* were never recursed. Hardening
+  // for the untrusted-input case (L3 audit) — under the dogfood model the CLI runs on the
+  // owner's machine, but the check is cheap and removes the foot-gun.
+  const repoRoot = resolve(root)
   const out: FlowFile[] = []
   const walk = async (dir: string): Promise<void> => {
     const entries = await readdir(dir, { withFileTypes: true })
     for (const entry of entries) {
       if (out.length >= maxFiles) return
+      if (entry.isSymbolicLink()) continue
       const full = join(dir, entry.name)
+      const resolved = resolve(full)
+      if (resolved !== repoRoot && !resolved.startsWith(repoRoot + sep)) continue
       if (entry.isDirectory()) {
         if (!SKIP_DIRS.has(entry.name)) await walk(full)
-      } else if (SOURCE_EXT.has(extname(entry.name))) {
+      } else if (entry.isFile() && SOURCE_EXT.has(extname(entry.name))) {
         out.push({ path: relative(root, full), content: clip(await readFile(full, 'utf8'), maxFileBytes) })
       }
     }
@@ -40,6 +48,11 @@ export async function readFlowFiles(root: string, opts: ReadFlowOptions = {}): P
   return out
 }
 
+// Clip to a BYTE budget, not a UTF-16 length (L3 audit): maxFileBytes is a prompt-size guard,
+// and a multibyte-heavy file would otherwise blow past it. Slicing bytes can cut a codepoint
+// mid-sequence → toString emits a trailing U+FFFD; strip it so the clip stays clean.
 function clip(text: string, max: number): string {
-  return text.length > max ? `${text.slice(0, max)}\n/* …truncated… */` : text
+  if (Buffer.byteLength(text, 'utf8') <= max) return text
+  const sliced = Buffer.from(text, 'utf8').subarray(0, max).toString('utf8').replace(/�$/, '')
+  return `${sliced}\n/* …truncated… */`
 }

@@ -114,7 +114,9 @@ export async function getAlwaysOn(ctx: ServeCtx): Promise<ServedDecision[]> {
       ),
     )
     .groupBy(decisions.id)
-    .orderBy(sql`(${decisions.ranking} ->> 'composite')::float desc`)
+    // decisions.id as a stable secondary key (L1 audit): without it, two equally-ranked
+    // decisions can flap in/out of the agent's context across calls at the limit boundary.
+    .orderBy(sql`(${decisions.ranking} ->> 'composite')::float desc`, decisions.id)
     .limit(ALWAYS_ON_LIMIT)
   const served = mapRows(rows)
   logServe(ctx, 'context', {}, served, start)
@@ -164,7 +166,9 @@ export async function findDecisionsByFiles(ctx: ServeCtx, files: string[]): Prom
       ),
     )
     .groupBy(decisions.id)
-    .orderBy(sql`(${decisions.ranking} ->> 'composite')::float desc`)
+    // decisions.id as a stable secondary key (L1 audit): without it, two equally-ranked
+    // decisions can flap in/out of the agent's context across calls at the limit boundary.
+    .orderBy(sql`(${decisions.ranking} ->> 'composite')::float desc`, decisions.id)
     .limit(FILE_MATCH_LIMIT)
   return mapRows(rows)
 }
@@ -217,7 +221,7 @@ export async function searchByQuery(ctx: ServeCtx, query: string): Promise<Serve
       and(eq(decisions.repoId, ctx.repoId), inArray(decisions.status, SERVABLE), sql`${tsv} @@ ${tsq}`),
     )
     .groupBy(decisions.id)
-    .orderBy(sql`ts_rank(${tsv}, ${tsq}) desc`, sql`(${decisions.ranking} ->> 'composite')::float desc`)
+    .orderBy(sql`ts_rank(${tsv}, ${tsq}) desc`, sql`(${decisions.ranking} ->> 'composite')::float desc`, decisions.id)
     .limit(SEARCH_LIMIT)
   const served = mapRows(rows)
   logServe(ctx, 'search', { query }, served, start)
