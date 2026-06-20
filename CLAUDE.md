@@ -6,7 +6,7 @@ coding agent at edit time over MCP, so the agent doesn't silently re-make a bann
 
 TypeScript monorepo (pnpm + Turbo). Design and rationale live in `docs/`:
 - `docs/reference/decision-logs.md` — the append-only decision log (D1–D31+). Read this for _why_.
-- `docs/technical/{capture-loop,serving,data-model,dashboard}.md` — build-phase specs.
+- `docs/technical/{capture-loop,serving,data-model,dashboard,multi-tenant}.md` — build-phase specs.
 
 Layout: `packages/{core,db,cli,mcp}`, `apps/{api,web}`. `apps/api` (Hono) is the backend for
 machine clients (CLI persist, MCP serving, ServeEvent logging); `apps/web` (TanStack Start) is
