@@ -7,7 +7,6 @@ export const Route = createFileRoute('/sign-up')({
   component: SignUpPage,
 })
 
-/* ─── Password strength logic ─── */
 type StrengthLevel = 0 | 1 | 2 | 3
 
 function getStrength(password: string): StrengthLevel {
@@ -39,7 +38,6 @@ function PasswordStrengthBar({ password }: { password: string }) {
 
   return (
     <div style={{ marginTop: '8px' }}>
-      {/* 3 segment bar */}
       <div style={{ display: 'flex', gap: '4px', marginBottom: '5px' }}>
         {([1, 2, 3] as StrengthLevel[]).map((seg) => (
           <div
@@ -72,7 +70,6 @@ function PasswordStrengthBar({ password }: { password: string }) {
   )
 }
 
-/* ─── Page ─── */
 function SignUpPage() {
   const navigate = useNavigate()
   const [name, setName] = useState('')
@@ -214,7 +211,6 @@ function SignUpPage() {
   )
 }
 
-/* ─── Icons ─── */
 function EyeIcon() {
   return (
     <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">

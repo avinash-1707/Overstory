@@ -27,7 +27,6 @@ const searchBody = z.object({ query: z.string().default('') })
 // task; 30/min absorbs that while stopping a runaway loop from draining credits (audit H2).
 const CHECK_CALLS_PER_MIN = 30
 
-// Build the tenant-scoped serve context, or null if the key isn't repo-bound.
 function serveCtx(c: Context<{ Variables: AuthVars }>): ServeCtx | null {
   const { workspaceId, repoId } = c.get('auth')
   if (!repoId) return null
@@ -38,14 +37,12 @@ function serveCtx(c: Context<{ Variables: AuthVars }>): ServeCtx | null {
 
 export const mcp = new Hono<{ Variables: AuthVars }>()
 
-// always-on tier (D20)
 mcp.get('/mcp/context', async (c) => {
   const ctx = serveCtx(c)
   if (!ctx) return c.json({ error: 'api key is not bound to a repo' }, 400)
   return c.json({ decisions: await getAlwaysOn(ctx) })
 })
 
-// file→decisions guard (D17)
 mcp.post('/mcp/guard', async (c) => {
   const ctx = serveCtx(c)
   if (!ctx) return c.json({ error: 'api key is not bound to a repo' }, 400)
@@ -54,7 +51,7 @@ mcp.post('/mcp/guard', async (c) => {
   return c.json({ decisions: await guardByFiles(ctx, parsed.data.files) })
 })
 
-// contradiction check (D11) — agent-side CATCH. Runs an LLM judgment server-side.
+// contradiction check (D11) — LLM judgment runs server-side (the metered chokepoint, D25).
 mcp.post('/mcp/check', async (c) => {
   const ctx = serveCtx(c)
   if (!ctx) return c.json({ error: 'api key is not bound to a repo' }, 400)
@@ -78,7 +75,6 @@ mcp.post('/mcp/check', async (c) => {
   }
 })
 
-// fuzzy task → decisions (D32). Cheap read, no LLM.
 mcp.post('/mcp/search', async (c) => {
   const ctx = serveCtx(c)
   if (!ctx) return c.json({ error: 'api key is not bound to a repo' }, 400)
@@ -87,7 +83,6 @@ mcp.post('/mcp/search', async (c) => {
   return c.json({ decisions: await searchByQuery(ctx, parsed.data.query) })
 })
 
-// read one decision in full
 mcp.get('/mcp/decision/:id', async (c) => {
   const ctx = serveCtx(c)
   if (!ctx) return c.json({ error: 'api key is not bound to a repo' }, 400)

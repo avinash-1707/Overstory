@@ -20,19 +20,16 @@ function DashboardLayout() {
   return (
     <div className="flex min-h-screen bg-bg text-fg">
       <aside className="flex w-[220px] shrink-0 flex-col border-r border-border bg-surface">
-        {/* Wordmark */}
         <div className="flex items-center gap-2.5 px-5 py-5">
           <Mark />
           <span className="font-display text-xl tracking-tight text-fg">Overstory</span>
         </div>
 
-        {/* Nav */}
         <nav className="flex flex-col gap-0.5 px-3 pt-1">
           <NavLink to="/sessions" label="Sessions" />
           <NavLink to="/activity" label="Activity" />
         </nav>
 
-        {/* Footer */}
         <div className="mt-auto border-t border-border">
           <div className="flex items-center justify-between px-4 py-3">
             <span className="text-2xs text-fg-subtle">Dogfood workspace</span>

@@ -19,8 +19,6 @@ export type AuthVars = { auth: AuthContext }
 // on every call (write storm + MVCC bloat on Neon). 60s is plenty for telemetry (audit M10).
 const LAST_USED_THROTTLE_MS = 60_000
 
-// ApiKey auth for machine clients (CLI, MCP). Bearer `osk_…` → SHA-256 → indexed
-// lookup → attach {workspaceId, repoId}. 401 on missing/invalid/expired.
 export const apiKeyAuth = createMiddleware<{ Variables: AuthVars }>(async (c, next) => {
   const token = bearerFromHeader(c.req.header('authorization'))
   if (!token) return c.json({ error: 'missing bearer api key' }, 401)

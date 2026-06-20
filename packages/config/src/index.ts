@@ -48,8 +48,6 @@ const present = Object.fromEntries(
   Object.entries(process.env).filter(([, v]) => v !== undefined && v !== ''),
 )
 
-// Validated snapshot. Unknown keys are stripped; non-empty values are format-checked (a
-// malformed URL/port fails loud at startup, not at first use).
 export const env = schema.parse(present)
 export type Env = typeof env
 

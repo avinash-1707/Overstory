@@ -12,7 +12,7 @@ import type { AuthVars } from '../middleware/auth'
 // come from the ApiKey, never the body (tenant boundary). One transaction per run:
 // upsert the flow, then append decisions + their code pointers (the path↔decision index).
 
-// alwaysOn (D20) is derived server-side from the composite rank — clients don't set it.
+// alwaysOn (D20) derived server-side from composite rank — clients don't set it.
 const ALWAYS_ON_THRESHOLD = 0.66
 
 const clamp01 = (n: number): number => (n < 0 ? 0 : n > 1 ? 1 : n)

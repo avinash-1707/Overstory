@@ -3,9 +3,8 @@ import { desc, sql } from 'drizzle-orm'
 import { serveEvents } from '@overstory/db/schema'
 import { db } from './lib/db'
 
-// Dogfood instrument (precursor to the D28 dashboard): what the coding agent pulled.
-// The existential metric (Risk 4) is whether the agent issues guard/context calls at
-// all. Run: `pnpm --filter @overstory/api stats`.
+// Dogfood instrument (D28 dashboard precursor). The existential metric (Risk 4) is whether
+// the agent issues guard/context calls at all. Run: `pnpm --filter @overstory/api stats`.
 
 async function main(): Promise<void> {
   const byTool = await db

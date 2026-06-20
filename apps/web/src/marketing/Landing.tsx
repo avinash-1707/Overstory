@@ -10,7 +10,6 @@ const fadeStyle = (delay = 0): React.CSSProperties => ({
   animation: `fade-up 600ms var(--ease-out) ${delay}ms both`,
 })
 
-/* ─── Pillar data ─── */
 const PILLARS = [
   {
     label: 'Coherence',
@@ -29,7 +28,6 @@ const PILLARS = [
   },
 ]
 
-/* ─── Component ─── */
 export function Landing() {
   return (
     <div
@@ -42,7 +40,6 @@ export function Landing() {
     >
       <Nav />
 
-      {/* ── Hero ── */}
       <section
         style={{
           maxWidth: '1100px',
@@ -51,7 +48,6 @@ export function Landing() {
           position: 'relative',
         }}
       >
-        {/* Subtle ruled line behind the headline */}
         <div
           aria-hidden
           style={{
@@ -66,7 +62,6 @@ export function Landing() {
         />
 
         <div>
-          {/* Eyebrow */}
           <p
             style={{
               ...fadeStyle(0),
@@ -81,7 +76,6 @@ export function Landing() {
             Decision memory for AI teams
           </p>
 
-          {/* Headline */}
           <h1
             style={{
               ...fadeStyle(80),
@@ -100,7 +94,6 @@ export function Landing() {
             <em style={{ color: 'var(--fg-muted)' }}>Make sure your agents use it.</em>
           </h1>
 
-          {/* Subhead */}
           <p
             style={{
               ...fadeStyle(160),
@@ -115,7 +108,6 @@ export function Landing() {
             so every coding session starts from shared understanding, not a blank slate.
           </p>
 
-          {/* CTAs */}
           <div
             style={{
               ...fadeStyle(240),
@@ -172,7 +164,6 @@ export function Landing() {
         </div>
       </section>
 
-      {/* ── Problem / Pull quote ── */}
       <section
         style={{
           borderTop: '1px solid var(--border)',
@@ -261,7 +252,6 @@ export function Landing() {
         </div>
       </section>
 
-      {/* ── Benefit pillars ── */}
       <section
         style={{
           maxWidth: '1100px',
@@ -306,7 +296,6 @@ export function Landing() {
         </div>
       </section>
 
-      {/* ── Testimonial placeholder ── */}
       <section
         style={{
           borderTop: '1px solid var(--border)',
@@ -372,7 +361,6 @@ export function Landing() {
         </div>
       </section>
 
-      {/* ── Final CTA ── */}
       <section
         style={{
           borderTop: '1px solid var(--border)',
@@ -441,7 +429,6 @@ export function Landing() {
         </div>
       </section>
 
-      {/* ── Footer ── */}
       <footer
         style={{
           borderTop: '1px solid var(--border)',
@@ -485,7 +472,6 @@ export function Landing() {
   )
 }
 
-/* ─── Pillar card sub-component ─── */
 function PillarCard({
   pillar,
   index,

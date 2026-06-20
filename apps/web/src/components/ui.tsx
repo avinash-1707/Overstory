@@ -1,10 +1,6 @@
-// apps/web/src/components/ui.tsx
-// Primitive UI components for the Overstory dashboard.
 // Design: Editorial / Archival. Dark default; light via [data-theme="light"].
 
 import { type ReactNode } from 'react'
-
-// ─── Button ─────────────────────────────────────────────────────────────────
 
 type ButtonVariant = 'filled' | 'ghost' | 'link'
 type ButtonSize = 'sm' | 'md'
@@ -48,8 +44,6 @@ export function Button({
   )
 }
 
-// ─── Badge ───────────────────────────────────────────────────────────────────
-
 type BadgeVariant = 'default' | 'warning' | 'danger' | 'success' | 'muted'
 
 interface BadgeProps {
@@ -76,8 +70,6 @@ export function Badge({ variant = 'default', children, className = '' }: BadgePr
   )
 }
 
-// ─── Tag (mono, for file paths / ids) ────────────────────────────────────────
-
 export function Tag({ children, className = '' }: { children: ReactNode; className?: string }) {
   return (
     <span
@@ -87,8 +79,6 @@ export function Tag({ children, className = '' }: { children: ReactNode; classNa
     </span>
   )
 }
-
-// ─── Card ────────────────────────────────────────────────────────────────────
 
 interface CardProps {
   children: ReactNode
@@ -112,8 +102,6 @@ export function Card({ children, className = '', padding = 'md' }: CardProps) {
   )
 }
 
-// ─── EmptyState ──────────────────────────────────────────────────────────────
-
 interface EmptyStateProps {
   title: string
   description?: string
@@ -131,8 +119,6 @@ export function EmptyState({ title, description, action }: EmptyStateProps) {
     </div>
   )
 }
-
-// ─── PageHeader ──────────────────────────────────────────────────────────────
 
 interface PageHeaderProps {
   title: string
@@ -157,8 +143,6 @@ export function PageHeader({ title, subtitle, action, back }: PageHeaderProps) {
     </div>
   )
 }
-
-// ─── Spinner ─────────────────────────────────────────────────────────────────
 
 export function Spinner({ size = 16 }: { size?: number }) {
   return (

@@ -43,34 +43,28 @@ function SessionsPage() {
                 className="session-row flex items-center gap-4 px-5 py-3.5 transition-colors hover:bg-raised"
                 style={{ animationDelay: `${i * 40}ms` }}
               >
-                {/* Relative time */}
                 <span className="w-20 shrink-0 text-2xs text-fg-subtle">
                   {formatRelative(new Date(s.lastAt))}
                 </span>
 
-                {/* Session ID */}
                 <span className="flex-1 font-mono text-xs text-fg-muted">
                   {truncateId(s.sessionId)}
                 </span>
 
-                {/* Stat group: calls */}
                 <span className="hidden shrink-0 flex-col items-end sm:flex">
                   <span className="font-mono text-xs text-fg">{s.callCount}</span>
                   <span className="text-2xs text-fg-subtle">calls</span>
                 </span>
 
-                {/* Stat group: served */}
                 <span className="hidden shrink-0 flex-col items-end md:flex">
                   <span className="font-mono text-xs text-fg">{s.servedCount}</span>
                   <span className="text-2xs text-fg-subtle">served</span>
                 </span>
 
-                {/* Guard-fired badge */}
                 {s.guardFired && (
                   <Badge variant="danger">guard fired</Badge>
                 )}
 
-                {/* Arrow */}
                 <span className="text-sm text-fg-subtle" aria-hidden="true">›</span>
               </Link>
             ))}

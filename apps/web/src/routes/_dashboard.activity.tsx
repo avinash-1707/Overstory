@@ -17,7 +17,6 @@ function ActivityPage() {
     <div className="mx-auto max-w-4xl px-8 py-8">
       <PageHeader title="Activity" />
 
-      {/* Consult rate hero */}
       <div className="mb-6">
         <ConsultRateHero
           rate={m.consultRate}
@@ -26,7 +25,6 @@ function ActivityPage() {
         />
       </div>
 
-      {/* Stat cards */}
       <div className="mb-6 grid grid-cols-2 gap-4">
         <StatCard
           label="Always-on injections"
@@ -50,7 +48,6 @@ function ActivityPage() {
         </div>
       )}
 
-      {/* Guard by path */}
       {m.guardByPath.length > 0 && (
         <div className="mb-6 rounded-lg border border-border bg-surface px-6 py-5">
           <h2 className="mb-4 text-sm font-medium text-fg">Guard calls by path</h2>
@@ -58,7 +55,6 @@ function ActivityPage() {
         </div>
       )}
 
-      {/* Most served decisions */}
       {m.mostServed.length > 0 && (
         <div className="rounded-lg border border-border bg-surface px-6 py-5">
           <h2 className="mb-4 text-sm font-medium text-fg">Most served decisions</h2>

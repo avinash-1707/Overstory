@@ -30,7 +30,6 @@ export function DecisionDetail({ decision: d }: DecisionDetailProps) {
 
   return (
     <div className="timeline-card rounded-md border border-border bg-surface px-4 py-3">
-      {/* Header row: title + badges */}
       <div className="flex flex-wrap items-start gap-2">
         <span className="flex-1 text-sm text-fg">{d.title}</span>
         <div className="flex shrink-0 flex-wrap gap-1.5">
@@ -42,12 +41,10 @@ export function DecisionDetail({ decision: d }: DecisionDetailProps) {
         </div>
       </div>
 
-      {/* Why */}
       {d.why && (
         <p className="mt-2 text-xs leading-relaxed text-fg-muted line-clamp-4">{d.why}</p>
       )}
 
-      {/* File pointers */}
       {d.where.length > 0 && (
         <div className="mt-2.5 flex flex-wrap gap-1.5">
           {d.where.map((w, i) => (

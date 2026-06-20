@@ -18,8 +18,6 @@ import { readFlowFiles } from './files'
 
 const execFileAsync = promisify(execFile)
 
-// Env is loaded + validated by @overstory/config (reads .env from cwd / repo root on import).
-
 interface Ranking {
   nonObviousness: number
   blastRadius: number
@@ -54,13 +52,11 @@ function redact(s: string): string {
   return out
 }
 
-// Short display title derived from the (possibly long) decision statement.
 function titleFrom(statement: string): string {
   const firstLine = statement.split('\n')[0]?.trim() || statement
   return firstLine.length > 80 ? `${firstLine.slice(0, 79)}…` : firstLine
 }
 
-// The commit the analysis ran against — recorded on every pointer (lastResolvedSha).
 async function gitHeadSha(cwd: string): Promise<string | null> {
   try {
     const { stdout } = await execFileAsync('git', ['rev-parse', 'HEAD'], { cwd })

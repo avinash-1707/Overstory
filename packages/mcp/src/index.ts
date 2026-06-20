@@ -13,10 +13,6 @@ import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js'
 import { StdioServerTransport } from '@modelcontextprotocol/sdk/server/stdio.js'
 import { registerTools } from './tools'
 
-// Env (OVERSTORY_API_URL / OVERSTORY_API_KEY) is loaded + validated by @overstory/config
-// (it reads the repo .env on import; the .mcp.json launcher passes no env, so .env is the
-// single source). requireEnv throws if either is missing — caught by main().catch below.
-
 async function main(): Promise<void> {
   const apiUrl = requireEnv('OVERSTORY_API_URL')
   const apiKey = requireEnv('OVERSTORY_API_KEY')

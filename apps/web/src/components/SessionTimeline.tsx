@@ -1,10 +1,6 @@
 import { DecisionDetail } from './DecisionDetail'
 import { Tag } from './ui'
 
-// ---------------------------------------------------------------------------
-// Types
-// ---------------------------------------------------------------------------
-
 type ServedDecisionView = {
   id: string
   present: boolean
@@ -33,10 +29,6 @@ type TimelineEvent = {
   conflicts: ServedDecisionView[]
 }
 
-// ---------------------------------------------------------------------------
-// Helpers
-// ---------------------------------------------------------------------------
-
 /** CSS custom property for each tool's dot color */
 const DOT_COLOR: Record<TimelineEvent['tool'], string> = {
   context: 'var(--fg-subtle)',
@@ -63,10 +55,6 @@ function formatTime(d: Date): string {
     hour12: false,
   })
 }
-
-// ---------------------------------------------------------------------------
-// QueryPreview — compact inline query hint shown in the summary row
-// ---------------------------------------------------------------------------
 
 function QueryPreview({ query }: { query: TimelineEvent['query'] }) {
   if (query.files && query.files.length > 0) {
@@ -99,10 +87,6 @@ function QueryPreview({ query }: { query: TimelineEvent['query'] }) {
   return null
 }
 
-// ---------------------------------------------------------------------------
-// TimelineItem
-// ---------------------------------------------------------------------------
-
 function TimelineItem({
   event,
   index,
@@ -116,7 +100,6 @@ function TimelineItem({
 
   return (
     <li className="relative mb-1">
-      {/* Timeline dot — positioned against the parent's left border */}
       <span
         className="absolute -left-[5px] top-[17px] h-2.5 w-2.5 rounded-full"
         style={{
@@ -128,9 +111,7 @@ function TimelineItem({
 
       {hasContent ? (
         <details className="group">
-          {/* Summary row */}
           <summary className="flex cursor-pointer select-none flex-wrap items-center gap-2 rounded-md px-3 py-2 transition-colors hover:bg-raised">
-            {/* Chevron */}
             <span className="chevron shrink-0 text-fg-subtle" aria-hidden="true">
               <svg width="10" height="10" viewBox="0 0 10 10" fill="none">
                 <path
@@ -143,17 +124,14 @@ function TimelineItem({
               </svg>
             </span>
 
-            {/* Tool label */}
             <span className={`font-mono text-xs font-medium ${toolTextClass}`}>
               {event.tool}
             </span>
 
-            {/* Query preview */}
             <span className="flex flex-1 flex-wrap items-center gap-1.5 overflow-hidden">
               <QueryPreview query={event.query} />
             </span>
 
-            {/* Meta: time + latency */}
             <span className="ml-auto flex shrink-0 items-center gap-2 font-mono text-2xs text-fg-subtle">
               <span>{formatTime(new Date(event.createdAt))}</span>
               <span className="text-fg-subtle opacity-40">·</span>
@@ -161,9 +139,7 @@ function TimelineItem({
             </span>
           </summary>
 
-          {/* Expanded content */}
           <div className="ml-3 mt-1.5 flex flex-col gap-2 pb-3 pl-4 border-l border-border">
-            {/* Served decisions */}
             {event.served.length > 0 && (
               <div className="flex flex-col gap-2">
                 {event.served.map((d) => (
@@ -172,7 +148,6 @@ function TimelineItem({
               </div>
             )}
 
-            {/* Conflicts section */}
             {event.conflicts.length > 0 && (
               <div className="mt-1">
                 <span className="mb-1.5 block text-2xs font-medium uppercase tracking-wider text-danger">
@@ -188,7 +163,6 @@ function TimelineItem({
           </div>
         </details>
       ) : (
-        /* No expandable content: flat row */
         <div className="flex flex-wrap items-center gap-2 px-3 py-2">
           <span className={`font-mono text-xs font-medium ${toolTextClass}`}>
             {event.tool}
@@ -208,10 +182,6 @@ function TimelineItem({
     </li>
   )
 }
-
-// ---------------------------------------------------------------------------
-// SessionTimeline
-// ---------------------------------------------------------------------------
 
 interface SessionTimelineProps {
   events: TimelineEvent[]

@@ -38,7 +38,6 @@ export function Nav() {
           justifyContent: 'space-between',
         }}
       >
-        {/* Wordmark */}
         <Link
           to="/"
           style={{
@@ -52,7 +51,6 @@ export function Nav() {
           Overstory
         </Link>
 
-        {/* Desktop nav */}
         <nav
           style={{
             display: 'flex',

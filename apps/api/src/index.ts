@@ -6,10 +6,7 @@ import { apiKeyAuth, type AuthVars } from './middleware/auth'
 import { capture } from './routes/capture'
 import { mcp } from './routes/mcp'
 
-// @overstory/api — Hono backend for MACHINE clients (D29):
-//   - capture persist (CLI → /v1/capture)
-//   - MCP serving lookups + ServeEvent logging (/v1/mcp/*, next stage)
-//   - GitHub App webhooks (PR contradiction check, D11/D27 — later)
+// @overstory/api — Hono backend for machine clients (CLI/MCP, D29).
 // Human UI lives in apps/web (TanStack Start). Shared data layer: @overstory/db.
 
 const app = new Hono<{ Variables: AuthVars }>()
@@ -24,7 +21,6 @@ app.onError((err, c) => {
 
 app.get('/health', (c) => c.json({ ok: true }))
 
-// Better Auth — session-based human auth (web app + future dashboard).
 app.on(['POST', 'GET'], '/api/auth/*', (c) => auth.handler(c.req.raw))
 
 // Machine clients (CLI, MCP) — every /v1/* route requires a bearer ApiKey.

@@ -7,8 +7,7 @@ import { Llm, type TokenUsage } from '@overstory/core/llm'
 // is unset so callers DEGRADE OPEN (no key → no judgment → no conflicts, never a block).
 let cached: Llm | null = null
 
-// Per-call usage is logged now (observable spend on the one metered path). A persistent
-// credit/billing ledger is the chokepoint's next step, deferred with the credit system (D32).
+// Per-call usage is logged (observable spend on the one metered path; D32 defers the billing ledger).
 function logUsage(model: string, u: TokenUsage): void {
   console.error(
     `[llm-usage] ${model} prompt=${u.promptTokens} completion=${u.completionTokens} cost=${u.costUsd ?? 'n/a'}`,

@@ -104,7 +104,6 @@ export class Llm {
     this.onUsage = config.onUsage
   }
 
-  /** Run a prompt and parse the response against a Zod schema (structured output). */
   async extract<T>(
     prompt: string,
     schema: z.ZodType<T>,

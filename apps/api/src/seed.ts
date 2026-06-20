@@ -6,9 +6,8 @@ import type { WorkspaceId } from '@overstory/db/schema'
 import { db } from './lib/db'
 import { mintApiKey } from './lib/api-key'
 
-// Dogfood bootstrap: one workspace (Better Auth organization) + one repo + one ApiKey.
-// The workspace is inserted directly as a tenant anchor — full signup/login arrives with
-// the dashboard slice; here we only need a workspace id for repos + keys to FK to.
+// Dogfood bootstrap: mint one workspace + repo + ApiKey.
+// The workspace is inserted directly (full signup/login arrives with the dashboard slice).
 //   pnpm --filter @overstory/api seed   (override: SEED_WORKSPACE, SEED_REPO)
 
 const WORKSPACE = env.SEED_WORKSPACE ?? 'Dogfood'

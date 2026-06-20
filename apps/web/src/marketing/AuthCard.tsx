@@ -19,7 +19,6 @@ export function AuthCard({ title, children }: AuthCardProps) {
         fontFamily: 'var(--font-sans)',
       }}
     >
-      {/* Wordmark */}
       <Link
         to="/"
         style={{
@@ -35,7 +34,6 @@ export function AuthCard({ title, children }: AuthCardProps) {
         Overstory
       </Link>
 
-      {/* Card */}
       <div
         style={{
           width: '100%',
@@ -65,8 +63,6 @@ export function AuthCard({ title, children }: AuthCardProps) {
     </div>
   )
 }
-
-/* ─── Form primitives ─── */
 
 interface LabeledFieldProps {
   label: string

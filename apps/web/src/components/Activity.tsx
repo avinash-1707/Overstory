@@ -1,8 +1,4 @@
-// apps/web/src/components/Activity.tsx
-// Activity dashboard components: ConsultRateHero, StatCard, MiniBarChart, DecisionRankList.
 // Design: Editorial / Archival. Matches the dark token palette in ui.tsx.
-
-// ─── ConsultRateHero ─────────────────────────────────────────────────────────
 
 interface ConsultRateHeroProps {
   rate: number
@@ -12,32 +8,25 @@ interface ConsultRateHeroProps {
 
 export function ConsultRateHero({ rate, sessionsTotal, sessionsWithGuard }: ConsultRateHeroProps) {
   const pct = Math.round(rate * 100)
-  // Build the conic-gradient stop. We rotate -90deg so the arc starts at 12-o'clock.
   const conicBg = `conic-gradient(from -90deg, var(--accent) 0% ${pct}%, var(--raised) ${pct}% 100%)`
 
   return (
     <div className="rounded-lg border border-border bg-surface px-8 py-12 text-center">
-      {/* Donut ring */}
       <div
         className="relative mx-auto mb-6 h-20 w-20 rounded-full"
         style={{ background: conicBg }}
         aria-hidden="true"
       >
-        {/* Inner mask — creates the donut hole */}
         <div className="absolute inset-0 m-auto h-14 w-14 rounded-full bg-surface" />
-        {/* Percentage label inside the ring */}
         <div className="absolute inset-0 flex items-center justify-center">
           <span className="font-mono text-xs font-medium text-fg">{pct}%</span>
         </div>
       </div>
 
-      {/* Large display number */}
       <div className="font-display text-5xl text-fg">{pct}%</div>
 
-      {/* Label */}
       <div className="mt-2 text-2xs uppercase tracking-[0.15em] text-fg-muted">Consult Rate</div>
 
-      {/* Honesty caption */}
       <p className="mx-auto mt-3 max-w-md text-2xs text-fg-subtle">
         Sessions where the agent ran a guard check, out of {sessionsTotal}. This counts files the
         agent named, not the full diff, so it is a rough upper bound until PR-level data lands.
@@ -45,8 +34,6 @@ export function ConsultRateHero({ rate, sessionsTotal, sessionsWithGuard }: Cons
     </div>
   )
 }
-
-// ─── StatCard ────────────────────────────────────────────────────────────────
 
 interface StatCardProps {
   label: string
@@ -66,8 +53,6 @@ export function StatCard({ label, value, sub, accent = false }: StatCardProps) {
     </div>
   )
 }
-
-// ─── MiniBarChart ────────────────────────────────────────────────────────────
 
 interface MiniBarChartProps {
   items: { filePath: string; count: number }[]
@@ -102,8 +87,6 @@ export function MiniBarChart({ items, max }: MiniBarChartProps) {
     </ul>
   )
 }
-
-// ─── DecisionRankList ────────────────────────────────────────────────────────
 
 interface DecisionRankListProps {
   items: { id: string; title: string | null; present: boolean; count: number }[]

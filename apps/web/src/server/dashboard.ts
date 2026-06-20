@@ -23,8 +23,6 @@ export async function resolveDashCtx(): Promise<DashCtx> {
   return { db, workspaceId, repoId: repo.id as RepoId }
 }
 
-// Server-only data fns — called inside createServerFn handlers (see routes). Each
-// resolves the tenant scope then delegates to the shared @overstory/core/dashboard layer.
 export async function fetchSessions(window: DashWindow) {
   return listSessions(await resolveDashCtx(), { window })
 }

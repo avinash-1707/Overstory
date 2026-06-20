@@ -38,8 +38,6 @@ function cutoff(window: DashWindow): Date | null {
   return window === 'all' ? null : new Date(Date.now() - WINDOW_MS[window])
 }
 
-// ─── Sessions list ──────────────────────────────────────────────────────────
-
 export interface SessionSummary {
   sessionId: string
   startedAt: Date
@@ -97,8 +95,6 @@ export async function listSessions(
     tools: (r.tools ?? '').split(',').filter(Boolean) as McpTool[],
   }))
 }
-
-// ─── Session timeline (live payload reconstruction) ─────────────────────────
 
 // A served decision rebuilt from its current row (D28: IDs → render, no snapshot).
 // present=false when the decision was deleted since serve time; superseded=true when it
@@ -158,8 +154,6 @@ export async function getSessionTimeline(ctx: DashCtx, sessionId: string): Promi
     conflicts: e.conflictDecisionIds.map((id) => byId.get(id) ?? missingView(id)),
   }))
 }
-
-// ─── Activity metrics ───────────────────────────────────────────────────────
 
 export interface ActivityMetrics {
   window: DashWindow
@@ -251,8 +245,6 @@ export async function getActivityMetrics(ctx: DashCtx, window: DashWindow = '30d
     })),
   }
 }
-
-// ─── Shared loaders ─────────────────────────────────────────────────────────
 
 // Reconstruct decision views for a set of ids, repo-scoped (tenant boundary). Includes
 // superseded rows (timeline shows history); deleted ids simply won't appear in the map.

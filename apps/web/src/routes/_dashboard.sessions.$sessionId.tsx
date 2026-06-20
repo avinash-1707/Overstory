@@ -15,7 +15,6 @@ function SessionTimelinePage() {
 
   return (
     <div className="mx-auto max-w-3xl px-8 py-8">
-      {/* Back link */}
       <Link
         to="/sessions"
         className="inline-flex items-center gap-1.5 text-xs text-fg-muted transition-colors hover:text-fg"
@@ -24,7 +23,6 @@ function SessionTimelinePage() {
         <span>Sessions</span>
       </Link>
 
-      {/* Header */}
       <div className="mt-4 mb-8">
         <h1 className="font-display text-2xl tracking-tight text-fg">Session</h1>
         <p className="mt-0.5 font-mono text-xs text-fg-subtle">{sessionId}</p>
