@@ -7,6 +7,7 @@ import { normalizePath } from '@overstory/core/paths'
 import { composite } from '@overstory/core/capture'
 import { db } from '../lib/db'
 import type { AuthVars } from '../middleware/auth'
+import type { LogVars } from '../middleware/log'
 
 // POST /v1/capture — the CLI pushes captured decisions here (D24/D26). Repo + workspace
 // come from the ApiKey, never the body (tenant boundary). One transaction per run:
@@ -50,7 +51,7 @@ const bodySchema = z.object({
   decisions: z.array(decisionSchema).min(1).max(200),
 })
 
-export const capture = new Hono<{ Variables: AuthVars }>()
+export const capture = new Hono<{ Variables: AuthVars & LogVars }>()
 
 capture.post('/capture', async (c) => {
   const { repoId } = c.get('auth')

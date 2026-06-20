@@ -1,5 +1,6 @@
 import { env } from '@overstory/config'
 import { Llm, type TokenUsage } from '@overstory/core/llm'
+import { log } from './log'
 
 // The server-side LLM (D25/D31): the contradiction check runs its judgment HERE, in the
 // backend, not in the agent — so Overstory holds the key and is the single billing
@@ -9,9 +10,12 @@ let cached: Llm | null = null
 
 // Per-call usage is logged (observable spend on the one metered path; D32 defers the billing ledger).
 function logUsage(model: string, u: TokenUsage): void {
-  console.error(
-    `[llm-usage] ${model} prompt=${u.promptTokens} completion=${u.completionTokens} cost=${u.costUsd ?? 'n/a'}`,
-  )
+  log.info('llm usage', {
+    model,
+    promptTokens: u.promptTokens,
+    completionTokens: u.completionTokens,
+    costUsd: u.costUsd ?? null,
+  })
 }
 
 export function getLlm(): Llm | null {

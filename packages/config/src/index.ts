@@ -37,6 +37,9 @@ const schema = z.object({
   OVERSTORY_API_KEY: z.string().min(1).optional(),
   // API server
   PORT: z.coerce.number().int().positive().optional(),
+  // Structured-log verbosity floor (apps/api). Below this level, lines are dropped. Defaults
+  // to info; set to debug to see swallowed-telemetry failures, or warn to quiet the per-request line.
+  LOG_LEVEL: z.enum(['debug', 'info', 'warn', 'error']).optional(),
   // Seed overrides (apps/api seed)
   SEED_WORKSPACE: z.string().min(1).optional(),
   SEED_REPO: z.string().min(1).optional(),

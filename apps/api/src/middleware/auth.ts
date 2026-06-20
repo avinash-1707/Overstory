@@ -4,6 +4,7 @@ import { apiKeys } from '@overstory/db/schema'
 import type { ApiKeyId, RepoId, WorkspaceId } from '@overstory/db/schema'
 import { db } from '../lib/db'
 import { bearerFromHeader, hashKey } from '../lib/api-key'
+import { log } from '../lib/log'
 
 // What every authenticated request carries. The tenant boundary: all downstream
 // queries scope to workspaceId/repoId from here, never from client input. D26/D30.
@@ -55,8 +56,9 @@ export const apiKeyAuth = createMiddleware<{ Variables: AuthVars }>(async (c, ne
         .where(
           and(eq(apiKeys.id, row.id), or(isNull(apiKeys.lastUsedAt), lt(apiKeys.lastUsedAt, cutoff))),
         )
-    } catch {
-      // ignore — telemetry, not correctness
+    } catch (err) {
+      // ignore — telemetry, not correctness; surface at debug only (no key material, just the error)
+      log.debug('api-key last-used touch failed', { err, apiKeyId: row.id })
     }
   })()
 

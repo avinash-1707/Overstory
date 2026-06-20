@@ -2,20 +2,26 @@ import { env } from '@overstory/config'
 import { serve } from '@hono/node-server'
 import { Hono } from 'hono'
 import { auth } from './lib/auth'
+import { log } from './lib/log'
 import { apiKeyAuth, type AuthVars } from './middleware/auth'
+import { requestLogger, type LogVars } from './middleware/log'
 import { capture } from './routes/capture'
 import { mcp } from './routes/mcp'
 
 // @overstory/api — Hono backend for machine clients (CLI/MCP, D29).
 // Human UI lives in apps/web (TanStack Start). Shared data layer: @overstory/db.
 
-const app = new Hono<{ Variables: AuthVars }>()
+const app = new Hono<{ Variables: AuthVars & LogVars }>()
+
+// First in the chain: assign a correlation id + log every completed request (structured).
+app.use('*', requestLogger)
 
 // Global failsafe: any uncaught error (incl. a DB lookup that throws in apiKeyAuth) becomes a
 // generic 500 with no body, never a leaked stack or a hung request (audit H1). The auth gate
-// stays fail-CLOSED — a thrown error never lets an unauthenticated request through.
+// stays fail-CLOSED — a thrown error never lets an unauthenticated request through. The full
+// error is logged server-side (correlated by reqId); the client only ever sees the generic 500.
 app.onError((err, c) => {
-  console.error('api error', err)
+  log.error('unhandled error', { err, reqId: c.get('requestId'), path: c.req.path })
   return c.json({ error: 'internal error' }, 500)
 })
 
@@ -30,7 +36,7 @@ app.route('/v1', mcp)
 
 const port = env.PORT ?? 3001
 serve({ fetch: app.fetch, port }, ({ port }) => {
-  console.log(`api listening on :${port}`)
+  log.info('api listening', { port })
 })
 
 export type AppType = typeof app
