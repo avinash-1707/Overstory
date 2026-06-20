@@ -40,6 +40,12 @@ const schema = z.object({
   // Seed overrides (apps/api seed)
   SEED_WORKSPACE: z.string().min(1).optional(),
   SEED_REPO: z.string().min(1).optional(),
+  // Operator account the seed provisions into the dogfood org (D36): a real Better Auth user
+  // + member row, so the human dashboard resolves a tenant via the session. Only created when
+  // both email + password are set.
+  SEED_OPERATOR_EMAIL: z.string().email().optional(),
+  SEED_OPERATOR_PASSWORD: z.string().min(1).optional(),
+  SEED_OPERATOR_NAME: z.string().min(1).optional(),
 })
 
 // Empty-string env vars (e.g. `OVERSTORY_MODEL_FAST=` in .env) are treated as ABSENT —

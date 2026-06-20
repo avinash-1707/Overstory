@@ -17,7 +17,10 @@ import type { Db } from '@overstory/db'
 //     pnpm dlx @better-auth/cli@latest generate \
 //       --config apps/api/src/lib/auth.ts \
 //       --output packages/db/src/schema/auth.ts -y
-export function createAuth(db: Db, opts: { baseURL?: string; plugins?: BetterAuthPlugin[] } = {}) {
+export function createAuth(
+  db: Db,
+  opts: { baseURL?: string; plugins?: BetterAuthPlugin[]; disableSignUp?: boolean } = {},
+) {
   // requireEnv fails loud if BETTER_AUTH_SECRET is unset (better-auth would otherwise use a
   // weak generated dev secret → forgeable sessions in prod). Env checks live in @overstory/config.
   const secret = requireEnv('BETTER_AUTH_SECRET')
@@ -39,12 +42,15 @@ export function createAuth(db: Db, opts: { baseURL?: string; plugins?: BetterAut
     // OFF outside production; enable it everywhere. In-memory store suits one instance — a
     // shared store lands with multi-instance deploy (audit H2).
     rateLimit: { enabled: true },
-    // Sign-up is CLOSED by default: resolveDashCtx (apps/web) still serves the single seeded
-    // workspace regardless of who logs in (session-derived tenant scope is the D36 follow-up),
-    // so an open sign-up form lets any self-registered stranger read the dogfood tenant's
-    // decisions + activity. Gate behind OVERSTORY_OPEN_SIGNUP="true" (mint the operator account,
-    // then unset). Remove this gate when D36 lands session→workspace scope. See audit C1.
-    emailAndPassword: { enabled: true, disableSignUp: env.OVERSTORY_OPEN_SIGNUP !== 'true' },
+    // Sign-up is CLOSED by default. D36 made resolveDashCtx (apps/web) fail closed — a stranger
+    // who signs up resolves to their OWN (empty) org, not the dogfood tenant — but flipping this
+    // open is still the LAST step, gated on the two-user boundary test (docs/technical/multi-tenant.md).
+    // Until then, OVERSTORY_OPEN_SIGNUP="true" reopens it. opts.disableSignUp lets the seed force
+    // sign-up ON in-process (mint the operator) without touching the public default. See audit C1.
+    emailAndPassword: {
+      enabled: true,
+      disableSignUp: opts.disableSignUp ?? env.OVERSTORY_OPEN_SIGNUP !== 'true',
+    },
     // organization defines the schema (Workspace); any origin-specific plugins are appended
     // LAST via opts.plugins. The web sets its auth cookies by forwarding Better Auth's
     // Set-Cookie Response through the /api/auth/$ catch-all route (no plugin needed today); if
