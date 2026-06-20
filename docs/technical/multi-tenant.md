@@ -1,11 +1,13 @@
 # Overstory — Multi-tenant scope (D36)
 
 > **Status:** Read path **implemented** (D40) — `resolveDashCtx` is now session→member-verified→repo,
-> fail-closed; seed provisions the operator; first Vitest suite added. **Remaining:** flipping
-> `OVERSTORY_OPEN_SIGNUP` open is still gated on the two-user boundary integration test (§Test matrix /
-> §Rollout step 3-4). Closes audit **C1** by replacing the session-blind web read layer with
-> session-derived, member-verified tenant scope. Machine clients (`apps/api`) are already tenant-safe
-> (ApiKey → workspaceId/repoId); this is the human-path analog.
+> fail-closed; seed provisions the operator; Vitest unit suite + the two-user boundary integration
+> test both **pass** (the latter run against a real Postgres: a forged `activeOrganizationId` never
+> resolves to another org; zero-org → null; user B sees none of user A's activity). **The gate is
+> cleared** — flipping `OVERSTORY_OPEN_SIGNUP` open is now an ops toggle (§Rollout step 4), not a code
+> blocker. Closes audit **C1** by replacing the session-blind web read layer with session-derived,
+> member-verified tenant scope. Machine clients (`apps/api`) are already tenant-safe (ApiKey →
+> workspaceId/repoId); this is the human-path analog.
 >
 > **Decisions:** refines **D36** (session→workspace scope), honors **D34** (tenant boundary) and
 > **D37** (one shared Better Auth config, session→activeOrganizationId + member fallback).

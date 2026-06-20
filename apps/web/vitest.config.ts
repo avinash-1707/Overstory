@@ -6,5 +6,10 @@ export default defineConfig({
   test: {
     include: ['src/**/*.test.ts'],
     environment: 'node',
+    // The opt-in boundary test (OVERSTORY_RUN_DB_TESTS) hits a remote Postgres — each
+    // resolveDashCtx is several round-trips, so the 5s default is too tight. Pure unit tests
+    // finish in ms regardless.
+    testTimeout: 30_000,
+    hookTimeout: 30_000,
   },
 })
