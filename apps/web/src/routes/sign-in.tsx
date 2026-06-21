@@ -1,9 +1,16 @@
-import { createFileRoute, Link, useNavigate } from '@tanstack/react-router'
+import { createFileRoute, Link, redirect, useNavigate } from '@tanstack/react-router'
 import { useState } from 'react'
 import { authClient } from '../lib/auth-client'
 import { AuthCard, Divider, ErrorSlot, Input, LabeledField, SubmitButton } from '../marketing/AuthCard'
+import { seo } from '../lib/seo'
+import { getSession } from '../server/auth.functions'
 
 export const Route = createFileRoute('/sign-in')({
+  head: () => seo({ title: 'Sign in', noindex: true }),
+  // Already authenticated -> skip the form, go to the app (inverse of _dashboard's guard).
+  beforeLoad: async () => {
+    if (await getSession()) throw redirect({ to: '/dashboard' })
+  },
   component: SignInPage,
 })
 
@@ -29,7 +36,7 @@ function SignInPage() {
       if (result.error) {
         setError(result.error.message ?? 'Sign in failed. Please check your credentials.')
       } else {
-        navigate({ to: '/sessions' })
+        navigate({ to: '/dashboard' })
       }
     } catch (err) {
       setError('Unable to connect. Please try again shortly.')
