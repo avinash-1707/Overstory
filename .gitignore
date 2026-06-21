@@ -21,3 +21,7 @@ dist/
 *.log
 .DS_Store
 coverage/
+
+# agent tooling artifacts
+.claude/
+**/.claude/

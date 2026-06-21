@@ -1,0 +1,56 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 630" width="1200" height="630">
+  <defs>
+    <!-- Subtle amber warmth bleeding in from top-right: restraint is the point -->
+    <radialGradient id="glow" cx="85%" cy="15%" r="45%" fx="85%" fy="15%">
+      <stop offset="0%" stop-color="#d4a843" stop-opacity="0.07"/>
+      <stop offset="100%" stop-color="#0c0c0b" stop-opacity="0"/>
+    </radialGradient>
+  </defs>
+
+  <!-- Ground -->
+  <rect x="0" y="0" width="1200" height="630" fill="#0c0c0b"/>
+
+  <!-- Radial glow: top-right warmth, very low opacity -->
+  <rect x="0" y="0" width="1200" height="630" fill="url(#glow)"/>
+
+  <!-- Ghost diamond watermark: large, upper-right, structural not decorative
+       Outer shell only, low opacity — encodes the "decision held in memory" idea
+       Centered around x=980, y=220, span ~340px -->
+  <path d="M980 50L1150 220L980 390L810 220Z" fill="none" stroke="#d4a843" stroke-width="1" stroke-opacity="0.10"/>
+  <!-- Inner ghost ring -->
+  <path d="M980 135L1065 220L980 305L895 220Z" fill="none" stroke="#d4a843" stroke-width="1" stroke-opacity="0.13"/>
+
+  <!-- Mark: diamond lockup, bottom-left anchor, ~64px -->
+  <!-- Outer diamond: 64px span, centered at x=130, y=298 -->
+  <path d="M130 266L162 298L130 330L98 298Z" fill="#d4a843" fill-opacity="0.95"/>
+  <!-- Inner diamond: punched void -->
+  <path d="M130 280L144 298L130 316L116 298Z" fill="#0c0c0b"/>
+
+  <!-- Wordmark: "Overstory", Georgia serif, warm off-white. IMPORTANT: x/y/font-size below are
+       mirrored in scripts/build-favicons.sh (it re-draws this wordmark with IM-native text because
+       ImageMagick v6 mangles SVG <text>). Change them in BOTH places or the PNG desyncs. -->
+  <text
+    x="90"
+    y="422"
+    font-family="Georgia, 'Times New Roman', serif"
+    font-size="96"
+    font-weight="400"
+    fill="#ece8de"
+    letter-spacing="-1">Overstory</text>
+
+  <!-- Eyebrow: sans, uppercase, tracked, amber, below wordmark -->
+  <text
+    x="93"
+    y="468"
+    font-family="Helvetica, Arial, sans-serif"
+    font-size="22"
+    font-weight="400"
+    fill="#d4a843"
+    letter-spacing="3.5">DECISION MEMORY FOR AI TEAMS</text>
+
+  <!-- Thin amber rule along the bottom: single pixel, on-brand borders-over-shadows -->
+  <rect x="0" y="627" width="1200" height="1.5" fill="#d4a843" fill-opacity="0.55"/>
+
+  <!-- Left margin accent rule: very thin vertical amber line from mark to wordmark baseline -->
+  <rect x="84" y="252" width="1.5" height="232" fill="#d4a843" fill-opacity="0.25"/>
+</svg>

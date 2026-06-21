@@ -1,0 +1,16 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32" width="32" height="32">
+  <!-- Dark rounded-square background -->
+  <rect x="0" y="0" width="32" height="32" rx="7" ry="7" fill="#0c0c0b"/>
+
+  <!-- Outer diamond: amber, scaled from 16x16 geometry to ~22px centered at 16,16
+       Original: M8 1.5L13.5 8L8 14.5L2.5 8L8 1.5 on 16x16
+       Scale factor ~1.375 (22px span), centered at 16,16
+       New points: 16,4.6  23.2,16  16,27.4  8.8,16 -->
+  <path d="M16 4.6L23.2 16L16 27.4L8.8 16Z" fill="#d4a843" fill-opacity="0.95"/>
+
+  <!-- Inner diamond: background color punched through
+       Original: M8 5L11 8L8 11L5 8 on 16x16
+       Scale ~1.375, centered at 16,16
+       New points: 16,9.9  20.1,16  16,22.1  11.9,16 -->
+  <path d="M16 9.9L20.1 16L16 22.1L11.9 16Z" fill="#0c0c0b"/>
+</svg>
