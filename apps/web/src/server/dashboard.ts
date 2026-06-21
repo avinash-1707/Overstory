@@ -19,6 +19,11 @@ export async function resolveDashCtx(session: Session): Promise<DashCtx | null> 
   // The leak-closing check: activeOrganizationId is client-influenceable, so a set value scopes
   // nothing until the member table confirms this user belongs to it. An unverified active org is
   // discarded (falls to the membership lookup), never trusted.
+  // INVARIANT (do not optimize away): this live member re-query is also what makes Better Auth's
+  // session cookieCache safe. The session here may be served from a signed cookie up to 5 min
+  // stale, so tenant scope MUST be re-derived from live `member` rows keyed by the immutable
+  // userId — never trust a cached activeOrganizationId without this check, or the cache becomes a
+  // cross-tenant leak window.
   const activeOrgIsMember =
     active !== null &&
     (

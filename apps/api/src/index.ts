@@ -1,7 +1,9 @@
 import { env } from '@overstory/config'
 import { serve } from '@hono/node-server'
 import { Hono } from 'hono'
+import { startDbKeepalive } from '@overstory/db'
 import { auth } from './lib/auth'
+import { db } from './lib/db'
 import { log } from './lib/log'
 import { apiKeyAuth, type AuthVars } from './middleware/auth'
 import { requestLogger, type LogVars } from './middleware/log'
@@ -38,5 +40,9 @@ const port = env.PORT ?? 3001
 serve({ fetch: app.fetch, port }, ({ port }) => {
   log.info('api listening', { port })
 })
+
+// Keep one Neon connection warm so the auth/serving hot paths reuse it (~300ms) instead of
+// re-establishing a connection (~3s) after an idle spell.
+startDbKeepalive(db)
 
 export type AppType = typeof app
