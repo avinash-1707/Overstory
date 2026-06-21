@@ -2,10 +2,12 @@ import { useSuspenseQuery } from '@tanstack/react-query'
 import { createFileRoute, Link } from '@tanstack/react-router'
 import { SessionTimeline } from '../components/SessionTimeline'
 import { EmptyState } from '../components/ui'
+import { DashboardSkeleton } from '../components/DashboardSkeleton'
 import { timelineQuery } from '../lib/queries'
 
 export const Route = createFileRoute('/dashboard/sessions/$sessionId')({
   loader: ({ context, params }) => context.queryClient.ensureQueryData(timelineQuery(params.sessionId)),
+  pendingComponent: DashboardSkeleton,
   component: SessionTimelinePage,
 })
 

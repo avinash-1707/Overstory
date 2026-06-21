@@ -2,10 +2,12 @@ import { useSuspenseQuery } from '@tanstack/react-query'
 import { createFileRoute } from '@tanstack/react-router'
 import { ConsultRateHero, StatCard, MiniBarChart, DecisionRankList } from '../components/Activity'
 import { PageHeader } from '../components/ui'
+import { DashboardSkeleton } from '../components/DashboardSkeleton'
 import { metricsQuery } from '../lib/queries'
 
 export const Route = createFileRoute('/dashboard/activity')({
   loader: ({ context }) => context.queryClient.ensureQueryData(metricsQuery('all')),
+  pendingComponent: DashboardSkeleton,
   component: ActivityPage,
 })
 

@@ -1,10 +1,12 @@
 import { useSuspenseQuery } from '@tanstack/react-query'
 import { createFileRoute, Link } from '@tanstack/react-router'
 import { Badge, EmptyState, PageHeader } from '../components/ui'
+import { DashboardSkeleton } from '../components/DashboardSkeleton'
 import { sessionsQuery } from '../lib/queries'
 
 export const Route = createFileRoute('/dashboard/sessions/')({
   loader: ({ context }) => context.queryClient.ensureQueryData(sessionsQuery('all')),
+  pendingComponent: DashboardSkeleton,
   component: SessionsPage,
 })
 

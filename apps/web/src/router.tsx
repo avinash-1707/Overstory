@@ -16,6 +16,11 @@ export function getRouter() {
     defaultPreload: 'intent',
     // Let React Query own caching; keep the router's preload cache out of the way.
     defaultPreloadStaleTime: 0,
+    // Show a route's pendingComponent quickly once a navigation's loader is in flight, so a slow
+    // (Neon) data load renders a skeleton instead of leaving the old page frozen with the URL
+    // already changed. The min keeps it on screen long enough to not flicker on faster loads.
+    defaultPendingMs: 150,
+    defaultPendingMinMs: 300,
     scrollRestoration: true,
   })
 
