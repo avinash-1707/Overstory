@@ -3,7 +3,7 @@ import { createFileRoute, Link } from '@tanstack/react-router'
 import { Badge, EmptyState, PageHeader } from '../components/ui'
 import { sessionsQuery } from '../lib/queries'
 
-export const Route = createFileRoute('/_dashboard/sessions')({
+export const Route = createFileRoute('/dashboard/sessions/')({
   loader: ({ context }) => context.queryClient.ensureQueryData(sessionsQuery('all')),
   component: SessionsPage,
 })
@@ -38,7 +38,7 @@ function SessionsPage() {
             {sessions.map((s, i) => (
               <Link
                 key={s.sessionId}
-                to="/sessions/$sessionId"
+                to="/dashboard/sessions/$sessionId"
                 params={{ sessionId: s.sessionId }}
                 className="session-row flex items-center gap-4 px-5 py-3.5 transition-colors hover:bg-raised"
                 style={{ animationDelay: `${i * 40}ms` }}

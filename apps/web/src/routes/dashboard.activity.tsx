@@ -4,7 +4,7 @@ import { ConsultRateHero, StatCard, MiniBarChart, DecisionRankList } from '../co
 import { PageHeader } from '../components/ui'
 import { metricsQuery } from '../lib/queries'
 
-export const Route = createFileRoute('/_dashboard/activity')({
+export const Route = createFileRoute('/dashboard/activity')({
   loader: ({ context }) => context.queryClient.ensureQueryData(metricsQuery('all')),
   component: ActivityPage,
 })

@@ -4,7 +4,7 @@ import { SessionTimeline } from '../components/SessionTimeline'
 import { EmptyState } from '../components/ui'
 import { timelineQuery } from '../lib/queries'
 
-export const Route = createFileRoute('/_dashboard/sessions/$sessionId')({
+export const Route = createFileRoute('/dashboard/sessions/$sessionId')({
   loader: ({ context, params }) => context.queryClient.ensureQueryData(timelineQuery(params.sessionId)),
   component: SessionTimelinePage,
 })
@@ -16,7 +16,7 @@ function SessionTimelinePage() {
   return (
     <div className="mx-auto max-w-3xl px-8 py-8">
       <Link
-        to="/sessions"
+        to="/dashboard/sessions"
         className="inline-flex items-center gap-1.5 text-xs text-fg-muted transition-colors hover:text-fg"
       >
         <span aria-hidden="true">←</span>
